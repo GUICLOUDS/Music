@@ -1,0 +1,3571 @@
+local Players          = game:GetService("Players")
+local CoreGui          = game:GetService("CoreGui")
+local TweenService     = game:GetService("TweenService")
+local RunService       = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer      = Players.LocalPlayer
+if CoreGui:FindFirstChild("EmoteWheelV5") then
+    CoreGui:FindFirstChild("EmoteWheelV5"):Destroy()
+end
+local getAsset = getcustomasset or getsynasset
+local MUSIC_FOLDER = "Music"
+local MUSIC_PREFIX = "ewv5_"
+local function ensureMusicFolder()
+    if not makefolder then return false end
+    if isfolder then
+        if not isfolder(MUSIC_FOLDER) then
+            pcall(function() makefolder(MUSIC_FOLDER) end)
+        end
+    else
+        pcall(function() makefolder(MUSIC_FOLDER) end)
+    end
+    return isfolder and isfolder(MUSIC_FOLDER) or true
+end
+ensureMusicFolder()
+local function musicFileName(audioName)
+    return MUSIC_FOLDER .. "/" .. MUSIC_PREFIX .. tostring(audioName) .. ".mp3"
+end
+local OPEN_KEY     = Enum.KeyCode.Q
+local MAX_PER_PAGE = 5
+local VINYL_IMAGE_URL = "https://raw.githubusercontent.com/Fe-ProjectR/GAME-IMAGES/refs/heads/main/Untitled254_20260825164142.png"
+local VINYL_IMAGE_FILE = MUSIC_FOLDER .. "/ewv5_vinyl_disc.png"
+local VinylImageId = nil
+
+local function cacheVinylImage(forceRefresh)
+    if not (writefile and isfile and getAsset) then return false end
+    ensureMusicFolder()
+    if forceRefresh and delfile and isfile(VINYL_IMAGE_FILE) then
+        pcall(function() delfile(VINYL_IMAGE_FILE) end)
+    end
+    if isfile(VINYL_IMAGE_FILE) then
+        local ok, asset = pcall(function() return getAsset(VINYL_IMAGE_FILE) end)
+        if ok and asset then
+            VinylImageId = asset
+            return true
+        end
+    end
+    local ok, imageData = pcall(function()
+        return game:HttpGet(VINYL_IMAGE_URL)
+    end)
+    if not ok or type(imageData) ~= "string" or #imageData == 0 then
+        return false
+    end
+    local wrote = pcall(function()
+        writefile(VINYL_IMAGE_FILE, imageData)
+    end)
+    if not wrote then return false end
+    local okAsset, asset = pcall(function() return getAsset(VINYL_IMAGE_FILE) end)
+    if okAsset and asset then
+        VinylImageId = asset
+        return true
+    end
+    return false
+end
+cacheVinylImage(false)
+local OUTER_R      = 175
+local INNER_R      = 52
+local GAP_DEG      = 3
+local RES           = 420
+local HALF          = RES / 2
+local DISPLAY       = 400
+local SCALE         = DISPLAY / RES
+local KEYBINDS        = {}
+local ListeningEmote  = nil
+local ListeningKeyBtn = nil
+local KeybindRows     = {}
+local EMOTES = {
+    {
+        Name      = "Scenario",
+        Short     = "Scenario",
+        AnimationId = 74584932467049,
+        Version    = 918273645091827364509182736450918273645091827364509182736450,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/EMOTES/raw/refs/heads/main/Fortnite%20-%20Scenario%20Emote%20(Beat).mp3",
+        AudioName = "Scenario",
+    },
+    {
+        Name      = "Konton Boogie",
+        Short     = "Konton\nBoogie",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Konton%20boogie%20animation%20new%20base.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/konton.mp3",
+        AudioName = "Konton",
+        Duration  = 10, StartPos = 0, MusicEarly = 0.01,
+    },
+    {
+        Name      = "Headlock",
+        Short     = "Headlock",
+        AnimationId = 115314801778772,
+         Version    = 1572839405162738495061273849506127384950612,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/DIA%20DELICIA%20-%20MC%20STAFF,%20NAKAMA%20(SLOWED).mp3",
+        AudioName = "Headlock",
+    },
+    {
+        Name      = "ChronoShift",
+        Short     = "Chronoshift",
+        AnimationId = 131483538281639,
+         Version    = 9928374651029384756102938475610293847561029,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/Can%27t%20Killean%20the%20Zilean%20%20Chronoshift%20dance..mp3",
+        AudioName = "Chronoshift",
+    },
+    {
+        Name      = "Springtrap",
+        Short     = "Springtrap",
+        AnimationId = 123275408510473,
+        Version    = 8273649182736450918273645091827364509182736450918273645,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/springtrap.mp3",
+        AudioName = "Springtrap",
+    },
+    {
+        Name      = "YEET",
+        Short     = "YEET",
+        AnimationId = 119921352385180,
+        Version    = 61392847561029384756109238475610293847561029384756102938,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/YEET!.mp3",
+        AudioName = "YEET",
+    },
+    {
+        Name      = "Magnetic",
+        Short     = "Magnetic",
+        AnimationId = 101931254158613,
+        Version    = 90534937685463573503583205834904375439832895347435647554853475398573,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/EMOTES/raw/refs/heads/main/ILLIT%20-%20Magnetic%20(Lyrics)-mc%20(1).mp3",
+        AudioName = "Magnetic",
+    },
+    {
+        Name      = "Eye Out",
+        Short     = "Eye\nOut",
+        AnimationId = 97063997832628,
+        Version    = 90534937685463573503583205834904375439832895347435647554853475398573,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/EMOTES/raw/refs/heads/main/20260825_22_15_16_269-mc.mp3",
+        AudioName = "EyesOut",
+    },
+    {
+        Name      = "Subject3",
+        Short     = "Subject3",
+        AnimationId = 111821486533438,
+         Version    = 4103948572910293847561029384756102938475612,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/Chinese%20Dance.mp3",
+        AudioName = "ChineseDance",
+    },
+    {
+        Name      = "Tenna Dance",
+        Short     = "Tenna\nDance",
+        AnimationId = 75202452138001,
+         Version    = 8392847193847592834756192837465019283746510,
+        AnimationSpeed = 1.524,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/27.%20Its%20TV%20Time!%20(DELTARUNE%20Chapter%2034%20Soundtrack)%20-%20Toby%20Fox.mp3",
+        AudioName = "Tenna",
+    },
+    {
+        Name      = "Looping the Rooms",
+        Short     = "Looping\nRooms",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Looping%20the%20rooms%20animation%20new%20base.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260805210812.mp3",
+        AudioName = "Looping",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.3,
+    },
+    {
+        Name      = "Kwik Flip",
+        Short     = "Kwik\nFlip",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Kwip%20trip%20animation%20new%20base.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806002743.mp3",
+        AudioName = "Kwik",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.3,
+    },
+    {
+        Name      = "Silly Billy",
+        Short     = "Silly\nBilly",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Silly_billy_animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806103752.mp3",
+        AudioName = "Silly",
+        Duration  = 39, StartPos = 0, MusicEarly = 1.7,
+    },
+    {
+        Name      = "Psyco Teddy",
+        Short     = "Psyco\nTeddy",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Psyco_teddy_animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806134152.mp3",
+        AudioName = "Teddy",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.2,
+    },
+    {
+        Name      = "Yararara",
+        Short     = "Yararara",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Yararara%20animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806181524.mp3",
+        AudioName = "Yararara",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.3,
+    },
+    {
+        Name      = "Imposter Syndrome",
+        Short     = "Imposter\nSyndrome",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Imposter%20syndrome%20animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806194113.mp3",
+        AudioName = "Imposter",
+        Duration  = 19, StartPos = 0, MusicEarly = 3,
+    },
+    {
+        Name      = "Dont Hide Tung",
+        Short     = "Dont Hide\nTung",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Don't%20hide%20tung%20animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260808162616.mp3",
+        AudioName = "Tung",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.5,
+    },
+    {
+        Name      = "Bang Bang",
+        Short     = "Bang\nBang",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Bang%20bang%20bang%20animation.txt",
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260808173335.mp3",
+        AudioName = "Bang",
+        Duration  = 19, StartPos = 0, MusicEarly = 1.25,
+    },
+    {
+        Name      = "Hakari Dance",
+        Short     = "Hakari\nDance",
+        Url       = "https://raw.githubusercontent.com/GUICLOUDS/EMOTES/refs/heads/main/Hakari%20animation%20(1).txt",
+        AudioUrl  = "https://github.com/anhubiversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260808221502.mp3",
+        AudioName = "Hakari",
+        Duration  = 19, StartPos = 0, MusicEarly = 0.1,
+    },
+    {
+        Name      = "ASSUMPTIONS",
+        Short     = "ASSUMPTIONS",
+        AnimationId = 110314412967907,
+         Version    = 956789502914689457029136597034477460674396634119407676878074354324,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/Assumptions.mp3",
+        AudioName = "Assumptions",
+    },
+    {
+        Name      = "Kwik Flip",
+        Short     = "Kwik\nFlip",
+        AnimationId = 79596681420254,
+        Version    = 7319284756102938475610293847561029384756102938475610293847561029,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/anhubuniversal-create/Obfuscation-/raw/refs/heads/main/lv_0_20260806002743.mp3",
+        AudioName = "KwikNew",
+    },
+    {
+        Name      = "UNLOCK IT",
+        Short     = "UNLOCK IT",
+        AnimationId = 86242587105200,
+         Version    = 49036756783492756567938095773643457588095709029398594673,
+        AnimationSpeed = 1,
+        DirectAnimation = true,
+        MoveLock = true,
+        AudioUrl  = "https://github.com/GUICLOUDS/Music/raw/refs/heads/main/Charli%20XCX_%20Unlock%20it%20x%20Better%20off%20Alone%20Remix%20%5BNo%20rapNo%20Jay%20Park%5D.mp3",
+        AudioName = "UnlockIt",
+    },
+}
+local ReanimationEmotes = {}
+local CFrameEmotes = {}
+for _, emote in ipairs(EMOTES) do
+    if emote.DirectAnimation then
+        table.insert(ReanimationEmotes, emote)
+    else
+        table.insert(CFrameEmotes, emote)
+    end
+end
+local AnimationSections = {
+    {Name = "Reanimation", Emotes = ReanimationEmotes},
+    {Name = "Cframe animations", Emotes = CFrameEmotes},
+}
+local CurrentSection = 1
+local CurrentPage = 1
+local TotalPages = math.max(1, math.ceil(#AnimationSections[CurrentSection].Emotes / MAX_PER_PAGE))
+local function getSectionPageCount(sectionIndex)
+    local section = AnimationSections[sectionIndex]
+    return math.max(1, math.ceil(#section.Emotes / MAX_PER_PAGE))
+end
+local function getPageEmotes(page)
+    local section = AnimationSections[CurrentSection]
+    local source = section and section.Emotes or {}
+    local startIdx = (page - 1) * MAX_PER_PAGE + 1
+    local endIdx = math.min(startIdx + MAX_PER_PAGE - 1, #source)
+    local result = {}
+    for i = startIdx, endIdx do
+        table.insert(result, source[i])
+    end
+    return result
+end
+local function getSectionNotificationText(sectionIndex)
+    local section = AnimationSections[sectionIndex]
+    return section and section.Name or "Animations"
+end
+local ScriptCache    = {}
+local WheelIsOpen    = false
+local NoMusicEnabled = false
+local MasterVolume     = 1.00
+local WheelDim         = 0.55
+local NotificationsOn  = true
+local SettingsOpen     = false
+local SettingsDragging = nil
+local CurrentSound   = nil
+local CurrentSoundFadeToken = 0
+local TRANSITION_TIME = 0.24
+local HoveredSlice   = nil
+local ActiveToken    = nil
+local IsEmoting      = false
+local EmoteOrigin    = nil
+local Character      = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+Character.Archivable = true
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Character.Archivable = true
+end)
+local PreloadGui = Instance.new("ScreenGui")
+PreloadGui.Name = "EmoteWheelV5Loader"
+PreloadGui.ResetOnSpawn = false
+PreloadGui.IgnoreGuiInset = true
+PreloadGui.DisplayOrder = 10000
+PreloadGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+PreloadGui.Parent = CoreGui
+local PreloadText = Instance.new("TextLabel")
+PreloadText.AnchorPoint = Vector2.new(0, 0.5)
+PreloadText.Size = UDim2.new(0, 420, 0, 30)
+PreloadText.Position = UDim2.new(0, -440, 0.5, 0)
+PreloadText.BackgroundTransparency = 1
+PreloadText.Font = Enum.Font.GothamBold
+PreloadText.TextSize = 16
+PreloadText.TextColor3 = Color3.fromRGB(255, 255, 255)
+PreloadText.TextTransparency = 1
+PreloadText.TextXAlignment = Enum.TextXAlignment.Left
+PreloadText.Text = "Loading emotes, music, and effects..."
+PreloadText.ZIndex = 10001
+PreloadText.Parent = PreloadGui
+local preloadTotal = #EMOTES
+local preloadDone = 0
+local function setPreloadStatus(text)
+    PreloadText.Text = text
+end
+TweenService:Create(
+    PreloadText,
+    TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+    {Position = UDim2.new(0, 18, 0.5, 0), TextTransparency = 0}
+):Play()
+local function cacheAudioForEmote(e, forceRefresh)
+    if not (e.AudioUrl and e.AudioName and getAsset and writefile and isfile) then
+        return false
+    end
+    ensureMusicFolder()
+    local fn = musicFileName(e.AudioName)
+    local function resolveLocal()
+        if not isfile(fn) then return false end
+        for _ = 1, 3 do
+            local ok, asset = pcall(function() return getAsset(fn) end)
+            if ok and asset then
+                e.LocalAudioId = asset
+                return true
+            end
+            task.wait(0.12)
+        end
+        return false
+    end
+    if not forceRefresh and resolveLocal() then
+        return true
+    end
+    if delfile and isfile(fn) then
+        pcall(function() delfile(fn) end)
+    end
+    e.LocalAudioId = nil
+    for attempt = 1, 3 do
+        local okAudio, audio = pcall(function()
+            return game:HttpGet(e.AudioUrl)
+        end)
+        if okAudio and type(audio) == "string" and #audio > 0 then
+            local okWrite = pcall(function() writefile(fn, audio) end)
+            if okWrite and resolveLocal() then
+                return true
+            end
+        end
+        task.wait(0.18 * attempt)
+    end
+    return false
+end
+local preloadJobs = {}
+for _, e in ipairs(EMOTES) do
+    table.insert(preloadJobs, task.spawn(function()
+        if e.Url and not ScriptCache[e.Name] then
+            local ok, code = pcall(function()
+                return game:HttpGet(e.Url)
+            end)
+            if ok and type(code) == "string" and #code > 0 then
+                ScriptCache[e.Name] = code
+            end
+        end
+        if e.AudioUrl and e.AudioName then
+            cacheAudioForEmote(e, false)
+        end
+        preloadDone += 1
+        setPreloadStatus(("Loading everything... %d/%d"):format(preloadDone, preloadTotal))
+    end))
+end
+for _, job in ipairs(preloadJobs) do
+    pcall(function()
+        task.wait(job)
+    end)
+end
+setPreloadStatus("Everything is ready!")
+task.spawn(function()
+    for _, e in ipairs(EMOTES) do
+        if e.AudioUrl and e.AudioName and not e.LocalAudioId then
+            cacheAudioForEmote(e, true)
+            task.wait()
+        end
+    end
+end)
+task.wait(0.35)
+TweenService:Create(
+    PreloadText,
+    TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+    {Position = UDim2.new(0, -440, 0.5, 0), TextTransparency = 1}
+):Play()
+task.wait(0.5)
+if PreloadGui and PreloadGui.Parent then
+    PreloadGui:Destroy()
+end
+local function Tween(obj, props, t, style, dir)
+    TweenService:Create(
+        obj,
+        TweenInfo.new(
+            t or 0.22,
+            style or Enum.EasingStyle.Quart,
+            dir or Enum.EasingDirection.Out
+        ),
+        props
+    ):Play()
+end
+local ShowNotification = function() end
+local function NewToken()
+    local token = {
+        cancelled = false,
+        connections = {},
+        sounds = {},
+        tracks = {},
+        humanoid = nil,
+        hrp = nil,
+        head = nil,
+        oldSit = nil,
+        oldAutoRotate = nil,
+        oldWalkSpeed = nil,
+        oldJumpPower = nil,
+        oldJumpHeight = nil,
+        oldUseJumpPower = nil,
+        directAnimation = false,
+        directTrack = nil,
+        cameraConnection = nil,
+        oldCameraOffset = nil,
+        restoreGhost = nil,
+        checkpoint = nil,
+        eyeEffectPart = nil,
+        customFxFolder = nil,
+        customFxConnection = nil,
+    }
+    ActiveToken = token
+    return token
+end
+local function StartDirectHeadCamera(token, hum, hrp, head)
+    if not token or token.cancelled or not hum or not hrp or not head then return end
+    token.oldCameraOffset = hum.CameraOffset
+    if token.cameraConnection then
+        pcall(function() token.cameraConnection:Disconnect() end)
+        token.cameraConnection = nil
+    end
+    token.cameraConnection = RunService.RenderStepped:Connect(function()
+        if token.cancelled or ActiveToken ~= token then return end
+        if not hum.Parent or not hrp.Parent or not head.Parent then return end
+        local ok, offset = pcall(function()
+            return (hrp.CFrame + Vector3.new(0, 1.5, 0)):ToObjectSpace(head.CFrame).Position
+        end)
+        if ok then
+            hum.CameraOffset = offset
+        end
+    end)
+    table.insert(token.connections, token.cameraConnection)
+end
+local EYE_CLOSED_EMOTE = "Eye Out"
+local function StartEyeClosedEffect(token, hrp)
+    if not token or token.cancelled or not hrp or not hrp.Parent then return end
+    if token.eyeEffectPart then
+        pcall(function() token.eyeEffectPart:Destroy() end)
+        token.eyeEffectPart = nil
+    end
+    local fxPart = Instance.new("Part")
+    fxPart.Name = "EyesClosedEffectPart"
+    fxPart.Size = Vector3.new(10, 12, 10)
+    fxPart.Transparency = 1
+    fxPart.CanCollide = false
+    fxPart.CanTouch = false
+    fxPart.CanQuery = false
+    fxPart.CastShadow = false
+    fxPart.Massless = true
+    fxPart.Anchored = false
+    fxPart.CFrame = hrp.CFrame
+    fxPart.Parent = hrp.Parent
+    local weld = Instance.new("WeldConstraint")
+    weld.Name = "EyesClosedEffectWeld"
+    weld.Part0 = hrp
+    weld.Part1 = fxPart
+    weld.Parent = fxPart
+    local pe = Instance.new("ParticleEmitter")
+    pe.Name = "eyesClosed_Effect_ParticleEmitter"
+    pe.Texture = "rbxassetid://192664810"
+    pe.Rate = 15
+    pe.Speed = NumberRange.new(0, 0)
+    pe.Lifetime = NumberRange.new(0.55, 1.0)
+    pe.Rotation = NumberRange.new(-180, 180)
+    pe.RotSpeed = NumberRange.new(-180, 180)
+    pe.LightEmission = 1
+    pe.LightInfluence = 1
+    pe.SpreadAngle = Vector2.new(180, 180)
+    pe.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.35),
+        NumberSequenceKeypoint.new(0.18, 0.9),
+        NumberSequenceKeypoint.new(0.55, 0.6),
+        NumberSequenceKeypoint.new(1, 0)
+    })
+    pe.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.15),
+        NumberSequenceKeypoint.new(0.25, 0),
+        NumberSequenceKeypoint.new(0.7, 0.2),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    pe.Enabled = true
+    pe.Parent = fxPart
+    local sparkle = Instance.new("ParticleEmitter")
+    sparkle.Name = "eyesClosed_Effect_Sparkle"
+    sparkle.Texture = "rbxassetid://192664810"
+    sparkle.Rate = 8
+    sparkle.Speed = NumberRange.new(0, 0)
+    sparkle.Lifetime = NumberRange.new(0.35, 0.75)
+    sparkle.Rotation = NumberRange.new(0, 360)
+    sparkle.RotSpeed = NumberRange.new(-360, 360)
+    sparkle.LightEmission = 1
+    sparkle.LightInfluence = 0
+    sparkle.ZOffset = 1
+    sparkle.SpreadAngle = Vector2.new(180, 180)
+    sparkle.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.05),
+        NumberSequenceKeypoint.new(0.2, 0.7),
+        NumberSequenceKeypoint.new(0.5, 1),
+        NumberSequenceKeypoint.new(1, 0)
+    })
+    sparkle.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.12, 0.1),
+        NumberSequenceKeypoint.new(0.5, 0),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    sparkle.Parent = fxPart
+    local pl = Instance.new("PointLight")
+    pl.Name = "eyesClosed_Effect_PointLight"
+    pl.Color = Color3.fromRGB(255, 249, 171)
+    pl.Brightness = 1.2
+    pl.Range = 7
+    pl.Shadows = false
+    pl.Enabled = true
+    pl.Parent = fxPart
+    token.eyeEffectPart = fxPart
+    local sparkleTime = 0
+    local conn = RunService.Heartbeat:Connect(function(dt)
+        if token.cancelled or ActiveToken ~= token or not hrp.Parent or not fxPart.Parent then
+            return
+        end
+        sparkleTime += dt
+        local pulse = (math.sin(sparkleTime * 8) + 1) * 0.5
+        local shimmer = (math.sin(sparkleTime * 17) + 1) * 0.5
+        pl.Brightness = 0.75 + pulse * 1.25 + shimmer * 0.35
+        pl.Range = 6.5 + pulse * 1.8
+        local sizePulse = 0.85 + ((math.sin(sparkleTime * 11) + 1) * 0.5) * 0.35
+        pcall(function()
+            pe.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.30 * sizePulse),
+                NumberSequenceKeypoint.new(0.18, 0.85 * sizePulse),
+                NumberSequenceKeypoint.new(0.55, 0.58 * sizePulse),
+                NumberSequenceKeypoint.new(1, 0)
+            })
+        end)
+    end)
+    table.insert(token.connections, conn)
+end
+
+--// =========================
+--// CUSTOM DIRECT-EMOTE FX
+--// These effects intentionally run ONLY for DirectAnimation emotes.
+--// Yeet + Eye Out are excluded because they already have their own effects.
+--// =========================
+
+local CUSTOM_FX_EXCLUDED = {
+    ["YEET"] = true,
+    ["Eye Out"] = true,
+}
+
+local CUSTOM_FX_COLORS = {
+    Scenario   = {Color3.fromRGB(255, 70, 180), Color3.fromRGB(95, 180, 255), Color3.fromRGB(255, 235, 120)},
+    Headlock   = {Color3.fromRGB(255, 55, 95), Color3.fromRGB(160, 65, 255), Color3.fromRGB(255, 140, 210)},
+    ChronoShift= {Color3.fromRGB(60, 255, 235), Color3.fromRGB(255, 220, 105), Color3.fromRGB(120, 155, 255)},
+    Springtrap = {Color3.fromRGB(150, 255, 80), Color3.fromRGB(70, 255, 160), Color3.fromRGB(215, 255, 120)},
+    Magnetic   = {Color3.fromRGB(80, 235, 255), Color3.fromRGB(255, 90, 210), Color3.fromRGB(170, 120, 255)},
+    Subject3   = {Color3.fromRGB(255, 205, 80), Color3.fromRGB(255, 90, 90), Color3.fromRGB(255, 245, 190)},
+    ["Tenna Dance"] = {Color3.fromRGB(45, 255, 255), Color3.fromRGB(255, 65, 220), Color3.fromRGB(255, 245, 90)},
+    ASSUMPTIONS = {Color3.fromRGB(75, 150, 255), Color3.fromRGB(115, 210, 255), Color3.fromRGB(235, 250, 255)},
+    ["Kwik Flip"] = {Color3.fromRGB(255, 130, 45), Color3.fromRGB(255, 235, 120), Color3.fromRGB(255, 255, 255)},
+    ["UNLOCK IT"] = {Color3.fromRGB(255, 55, 180), Color3.fromRGB(90, 220, 255), Color3.fromRGB(235, 120, 255)},
+}
+
+local function seqColor(a, b)
+    return ColorSequence.new({
+        ColorSequenceKeypoint.new(0, a),
+        ColorSequenceKeypoint.new(1, b),
+    })
+end
+
+local function randUnit()
+    local v = Vector3.new(
+        math.random(-100, 100),
+        math.random(-100, 100),
+        math.random(-100, 100)
+    )
+    if v.Magnitude < 0.01 then
+        return Vector3.new(0, 1, 0)
+    end
+    return v.Unit
+end
+
+local function getTorsoPart(hrp)
+    local char = hrp and hrp.Parent
+    if not char then return hrp end
+    return char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+        or hrp
+end
+
+local function getTorsoCFrame(hrp)
+    local torso = getTorsoPart(hrp)
+    return torso and torso.CFrame or hrp.CFrame
+end
+
+local function getFloorCFrame(hrp, yOffset)
+    local origin = (hrp and hrp.Parent and (hrp.Parent:FindFirstChild("UpperTorso") or hrp.Parent:FindFirstChild("Torso") or hrp))
+    if not origin then return CFrame.new() end
+    local pos = origin.Position
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {hrp.Parent}
+    params.IgnoreWater = true
+    local result = workspace:Raycast(pos + Vector3.new(0, 1.5, 0), Vector3.new(0, -14, 0), params)
+    local floorY = result and result.Position.Y or (pos.Y - 3.0)
+    return CFrame.new(pos.X, floorY + (yOffset or 0.08), pos.Z)
+end
+
+local function addFxPart(folder, size, color, transparency)
+    local p = Instance.new("Part")
+    p.Name = "FXPart"
+    p.Size = size
+    p.Transparency = transparency or 1
+    p.Anchored = true
+    p.CanCollide = false
+    p.CanTouch = false
+    p.CanQuery = false
+    p.CastShadow = false
+    p.Material = Enum.Material.Neon
+    p.Color = color
+    p.Parent = folder
+    return p
+end
+
+local function addEmitter(parent, props)
+    local pe = Instance.new("ParticleEmitter")
+    for k, v in pairs(props) do
+        pcall(function() pe[k] = v end)
+    end
+    pe.Parent = parent
+    return pe
+end
+
+local function burstEmitter(pe, count)
+    if pe and pe.Parent then
+        pcall(function() pe:Emit(count or 8) end)
+    end
+end
+
+-- Creates a medium, floor-locked pulsing energy disk. The light intensity is left
+-- completely untouched; only the disk itself scales with the music pulse.
+local function addPulsingDisk(folder, color, baseRadius, thickness, y, transparency)
+    -- Medium ground-disk scale: keeps the pulse visible without overwhelming the character.
+    baseRadius = baseRadius * 0.78
+    local disk = addFxPart(folder, Vector3.new(thickness or 0.14, baseRadius * 2, baseRadius * 2), color, transparency or 0.16)
+    disk.Name = "PulsingDisk"
+    disk.Shape = Enum.PartType.Cylinder
+    disk.Material = Enum.Material.Neon
+    disk:SetAttribute("BaseRadius", baseRadius)
+    disk:SetAttribute("BaseThickness", thickness or 0.14)
+    disk:SetAttribute("BaseTransparency", transparency or 0.16)
+    disk:SetAttribute("DiskY", y or 0.07)
+    return disk
+end
+
+local function updatePulsingDisk(disk, floorCF, t, pulse, speed, expand)
+    local baseRadius = disk:GetAttribute("BaseRadius") or 4
+    local baseThickness = disk:GetAttribute("BaseThickness") or 0.14
+    local diskY = disk:GetAttribute("DiskY") or 0.07
+    local phase = t * (speed or 1.8)
+    local wave = (math.sin(phase) + 1) * 0.5
+    local radius = baseRadius + pulse * (expand or 0.95) + wave * 0.22
+    disk.CFrame = floorCF * CFrame.Angles(0, t * (speed or 1.8), math.rad(90))
+    disk.Size = Vector3.new(baseThickness + pulse * 0.08, radius * 2, radius * 2)
+    local baseTransparency = disk:GetAttribute("BaseTransparency") or 0.16
+    disk.Transparency = math.clamp(baseTransparency - pulse * 0.08, 0.035, 0.4)
+end
+
+local function addLimbTrail(folder, limb, colors, lifetime, width0, width1)
+    if not limb or not limb:IsA("BasePart") then return nil end
+    local top = Instance.new("Attachment")
+    top.Name = "TrailTop"
+    top.Position = Vector3.new(0, limb.Size.Y * 0.48, 0)
+    top.Parent = limb
+
+    local bottom = Instance.new("Attachment")
+    bottom.Name = "TrailBottom"
+    bottom.Position = Vector3.new(0, -limb.Size.Y * 0.48, 0)
+    bottom.Parent = limb
+
+    local trail = Instance.new("Trail")
+    trail.Name = "EmoteLimbTrail"
+    trail.Attachment0 = top
+    trail.Attachment1 = bottom
+    trail.Lifetime = lifetime or 0.32
+    trail.MinLength = 0.02
+    trail.FaceCamera = true
+    trail.LightEmission = 1
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.05),
+        NumberSequenceKeypoint.new(0.65, 0.22),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    trail.WidthScale = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, width0 or 0.9),
+        NumberSequenceKeypoint.new(0.55, width1 or 0.5),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    trail.Color = seqColor(colors[1], colors[2])
+    trail.Parent = folder
+    trail.Destroying:Connect(function()
+        pcall(function() top:Destroy() end)
+        pcall(function() bottom:Destroy() end)
+    end)
+    return trail
+end
+
+local function pulsePart(part, baseSize, pulse)
+    local s = math.clamp(0.82 + pulse * 0.55, 0.5, 1.55)
+    part.Size = baseSize * s
+end
+
+local function makeBeamPart(folder, color, thickness, length)
+    local p = addFxPart(folder, Vector3.new(thickness, thickness, length), color, 0.22)
+    p.Material = Enum.Material.Neon
+    return p
+end
+
+local function setupBaseFx(token, e, hrp)
+    local folder = Instance.new("Folder")
+    folder.Name = "EmoteFX_" .. tostring(e.Name)
+    folder.Parent = workspace
+    token.customFxFolder = folder
+
+    local accent = CUSTOM_FX_COLORS[e.Name] or {Color3.new(1,1,1), Color3.new(1,1,1), Color3.new(1,1,1)}
+    local core = addFxPart(folder, Vector3.new(0.25, 0.25, 0.25), accent[1], 1)
+    core.CFrame = getTorsoCFrame(hrp)
+
+    local light = Instance.new("PointLight")
+    light.Name = "MusicPulseLight"
+    light.Color = accent[1]
+    light.Brightness = 0
+    light.Range = 12
+    light.Shadows = false
+    light.Parent = core
+
+    local spark = addEmitter(core, {
+        Texture = "rbxassetid://243660364",
+        Rate = 0,
+        Speed = NumberRange.new(0, 0),
+        Lifetime = NumberRange.new(0.18, 0.55),
+        Rotation = NumberRange.new(0, 360),
+        RotSpeed = NumberRange.new(-180, 180),
+        SpreadAngle = Vector2.new(180, 180),
+        LightEmission = 1,
+        LightInfluence = 0,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.12),
+            NumberSequenceKeypoint.new(0.35, 0.6),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.05),
+            NumberSequenceKeypoint.new(0.8, 0.25),
+            NumberSequenceKeypoint.new(1, 1),
+        }),
+    })
+    spark.Color = seqColor(accent[1], accent[2])
+
+    return folder, core, light, spark, accent
+end
+
+local function addRing(folder, color, radius, thickness, y)
+    local ring = addFxPart(folder, Vector3.new(0.25, 0.25, 0.25), color, 0.22)
+    ring.Shape = Enum.PartType.Cylinder
+    ring.Material = Enum.Material.Neon
+    ring.Size = Vector3.new(thickness, radius * 2, radius * 2)
+    ring.CFrame = CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90))
+    return ring, radius
+end
+
+local function addFloatingOrb(folder, color, size, offset)
+    local p = Instance.new("Part")
+    p.Shape = Enum.PartType.Ball
+    p.Size = Vector3.new(size, size, size)
+    p.Material = Enum.Material.Neon
+    p.Color = color
+    p.Transparency = 0.08
+    p.Anchored = true
+    p.CanCollide = false
+    p.CanTouch = false
+    p.CanQuery = false
+    p.CastShadow = false
+    p.Parent = folder
+    p:SetAttribute("BaseSize", size)
+    p:SetAttribute("OffsetX", offset.X)
+    p:SetAttribute("OffsetY", offset.Y)
+    p:SetAttribute("OffsetZ", offset.Z)
+    return p
+end
+
+local function startScenarioFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+
+    local rings = {}
+    for i = 1, 4 do
+        rings[i] = addPulsingDisk(folder, c[(i % 3) + 1], 2.55 + i * 0.42, 0.14, 0.08 + i * 0.018, 0.10 + i * 0.025)
+    end
+
+    local trailParts = {}
+    local char = hrp.Parent
+    for _, name in ipairs({"Left Arm", "Right Arm"}) do
+        local limb = char and char:FindFirstChild(name)
+        if limb then trailParts[#trailParts + 1] = addLimbTrail(folder, limb, c, 0.34, 1.0, 0.55) end
+    end
+
+    local streaks = {}
+    for i = 1, 7 do
+        local streak = addFxPart(folder, Vector3.new(0.09, 0.09, 3.2 + i * 0.4), c[(i % 3) + 1], 0.18)
+        streaks[i] = streak
+    end
+
+    local trail = addEmitter(core, {
+        Texture = "rbxassetid://6893912008", Rate = 10, Speed = NumberRange.new(1, 4),
+        Lifetime = NumberRange.new(0.28, 0.62), SpreadAngle = Vector2.new(360, 360),
+        LightEmission = 1, Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.22), NumberSequenceKeypoint.new(0.45, 0.62), NumberSequenceKeypoint.new(1, 0),
+        }), Transparency = NumberSequence.new(0.25), Color = seqColor(c[1], c[2]),
+    })
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1 + (math.floor(t * 3) % 3)]
+        light.Brightness = 0.8 + pulse * 5
+        light.Range = 10 + pulse * 8
+
+        local floorCF = getFloorCFrame(hrp, 0.06)
+        for i, ring in ipairs(rings) do
+            updatePulsingDisk(ring, floorCF, t + i * 0.22, pulse, 1.5 + i * 0.2, 1.8 + i * 0.25)
+        end
+
+        for i, streak in ipairs(streaks) do
+            local a = t * (1.8 + i * 0.08) + i
+            local r = 2.1 + pulse * 0.9
+            streak.CFrame = torsoCF * CFrame.new(math.cos(a) * r, math.sin(t * 2 + i) * 1.35, math.sin(a) * r) * CFrame.Angles(a, a * 0.7, t)
+            local z = 1.9 + pulse * 1.8
+            streak.Size = Vector3.new(0.08 + pulse * 0.04, 0.08 + pulse * 0.04, z)
+            streak.Transparency = 0.12 + (1 - pulse) * 0.22
+        end
+
+        trail.Rate = 7 + math.floor(pulse * 22)
+        if pulse > 0.72 then burstEmitter(spark, 4 + math.floor(pulse * 5)) end
+    end
+end
+
+local function startHeadlockFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local orbs = {}
+    for i = 1, 6 do
+        local a = (i / 6) * math.pi * 2
+        orbs[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.34, Vector3.new(math.cos(a) * 2.2, 0.5 + math.sin(a * 2) * 1.2, math.sin(a) * 2.2))
+    end
+    local glitch = addEmitter(core, {
+        Texture = "rbxassetid://258128463",
+        Rate = 10,
+        Speed = NumberRange.new(0.2, 1.5),
+        Lifetime = NumberRange.new(0.15, 0.4),
+        SpreadAngle = Vector2.new(360, 360),
+        LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(0.4, 0.8),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Transparency = NumberSequence.new(0.15),
+        Color = seqColor(c[1], c[3]),
+    })
+    return function(t, pulse)
+        core.CFrame = getTorsoCFrame(hrp)
+        light.Color = c[1 + (math.floor(t * 2.5) % 3)]
+        light.Brightness = 0.6 + pulse * 4.5
+        for i, orb in ipairs(orbs) do
+            local a = t * (1.9 + i * 0.07) + i
+            local radius = 1.9 + pulse * 0.9 + math.sin(t * 4 + i) * 0.15
+            orb.CFrame = getTorsoCFrame(hrp) * CFrame.new(math.cos(a) * radius, 0.65 + math.sin(a * 1.7) * 1.0, math.sin(a) * radius)
+            local size = 0.27 + pulse * 0.14
+            orb.Size = Vector3.new(size,size,size)
+        end
+        glitch.Rate = 8 + math.floor(pulse * 22)
+        if pulse > 0.8 then burstEmitter(spark, 4) end
+    end
+end
+
+local function startChronoFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local rings = {}
+    for i = 1, 4 do
+        local ring = addFxPart(folder, Vector3.new(0.12, 4.7, 4.7), c[(i % 3) + 1], 0.18)
+        ring.Shape = Enum.PartType.Cylinder
+        ring.Material = Enum.Material.Neon
+        rings[i] = ring
+    end
+    local clock = addFxPart(folder, Vector3.new(0.12, 3.8, 3.8), c[2], 0.28)
+    clock.Shape = Enum.PartType.Cylinder
+    clock.Material = Enum.Material.Glass
+    return function(t, pulse)
+        core.CFrame = getTorsoCFrame(hrp)
+        light.Color = c[1]
+        light.Brightness = 1 + pulse * 6
+        clock.CFrame = getFloorCFrame(hrp, 0.12) * CFrame.Angles(0, 0, math.rad(90))
+        clock.Size = Vector3.new(0.1, 3.8 + pulse * 0.9, 3.8 + pulse * 0.9)
+        for i, ring in ipairs(rings) do
+            local r = 2.1 + i * 0.45 + pulse * 0.9
+            ring.CFrame = getFloorCFrame(hrp, 0.10 + i * 0.03)
+                * CFrame.Angles(0, t * (i % 2 == 0 and -1.6 or 1.6) + i, math.rad(90))
+            ring.Size = Vector3.new(0.11 + pulse * 0.08, r, r)
+        end
+        if pulse > 0.86 then burstEmitter(spark, 6) end
+    end
+end
+
+local function startSpringtrapFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local spores = addEmitter(core, {
+        Texture = "rbxassetid://296874871",
+        Rate = 22,
+        Speed = NumberRange.new(1, 4),
+        Lifetime = NumberRange.new(0.5, 1.2),
+        SpreadAngle = Vector2.new(360, 360),
+        LightEmission = 0.8,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.14),
+            NumberSequenceKeypoint.new(0.55, 0.38),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Color = seqColor(c[1], c[2]),
+    })
+    local eyes = {}
+    for _, side in ipairs({-1, 1}) do
+        local eye = addFxPart(folder, Vector3.new(0.12,0.18,0.18), c[3], 0.02)
+        eyes[#eyes+1] = eye
+    end
+    return function(t, pulse)
+        core.CFrame = getTorsoCFrame(hrp)
+        light.Color = c[2]
+        light.Brightness = 0.8 + pulse * 5.5
+        light.Range = 9 + pulse * 8
+        local head = hrp.Parent and hrp.Parent:FindFirstChild("Head")
+        if head then
+            eyes[1].CFrame = head.CFrame * CFrame.new(-0.16, 0.08, -0.52)
+            eyes[2].CFrame = head.CFrame * CFrame.new(0.16, 0.08, -0.52)
+            for _, eye in ipairs(eyes) do
+                local glow = 0.06 + pulse * 0.18
+                eye.Size = Vector3.new(0.12, 0.17 + glow, 0.17 + glow)
+            end
+        end
+        spores.Rate = 18 + math.floor(pulse * 30)
+        if pulse > 0.76 then burstEmitter(spark, 5) end
+    end
+end
+
+local function startMagneticFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local arcs = {}
+    for i = 1, 3 do arcs[i] = addFxPart(folder, Vector3.new(0.12, 0.12, 4.2), c[i], 0.16) end
+    local beads = {}
+    for i = 1, 10 do beads[i] = addFloatingOrb(folder, c[(i % 2) + 1], 0.24, Vector3.zero) end
+
+    local disks = {}
+    for i = 1, 3 do
+        disks[i] = addPulsingDisk(folder, c[(i % 3) + 1], 2.65 + i * 0.48, 0.14, 0.07 + i * 0.02, 0.12)
+    end
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1 + (math.floor(t * 4) % 2)]
+        light.Brightness = 0.5 + pulse * 4.5
+        local floorCF = getFloorCFrame(hrp, 0.05)
+        for i, disk in ipairs(disks) do
+            updatePulsingDisk(disk, floorCF, t + i * 0.36, pulse, 1.6 + i * 0.18, 1.8 + i * 0.3)
+        end
+        for i, arc in ipairs(arcs) do
+            local a = t * (2.2 + i * 0.25) + i
+            local radius = 2.0 + pulse * 0.9
+            arc.CFrame = torsoCF * CFrame.new(math.cos(a) * radius, math.sin(a * 2) * 0.75, math.sin(a) * radius) * CFrame.Angles(0, -a, math.rad(35 * math.sin(t * 2 + i)))
+            arc.Transparency = 0.12 + (1 - pulse) * 0.22
+            arc.Size = Vector3.new(0.10 + pulse * 0.05, 0.10 + pulse * 0.05, 3.4 + pulse * 1.7)
+        end
+        for i, bead in ipairs(beads) do
+            local a = t * 2.8 + i * 0.8
+            local radius = 2.35 + math.sin(t * 5 + i) * 0.25 + pulse * 0.35
+            bead.CFrame = torsoCF * CFrame.new(math.cos(a) * radius, math.sin(a * 1.8) * 1.2, math.sin(a) * radius)
+            local s = 0.18 + pulse * 0.17
+            bead.Size = Vector3.new(s,s,s)
+        end
+        if pulse > 0.8 then burstEmitter(spark, 5 + math.floor(pulse * 4)) end
+    end
+end
+
+local function startSubject3Fx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+
+    local petals = {}
+    for i = 1, 14 do
+        petals[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.18, Vector3.zero)
+    end
+
+    local disk = addPulsingDisk(folder, c[1], 2.55, 0.15, 0.06, 0.10)
+    local disk2 = addPulsingDisk(folder, c[3], 1.85, 0.11, 0.10, 0.18)
+
+    local ribbon = addEmitter(core, {
+        Texture = "rbxassetid://258128463", Rate = 11, Speed = NumberRange.new(0.5, 2.5),
+        Lifetime = NumberRange.new(0.45, 1.15), SpreadAngle = Vector2.new(180,180), LightEmission = 0.95,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.18), NumberSequenceKeypoint.new(0.5, 0.60), NumberSequenceKeypoint.new(1, 0),
+        }), Color = seqColor(c[1], c[3]),
+    })
+
+    local sparks = addEmitter(core, {
+        Texture = "rbxassetid://243660364", Rate = 0, Speed = NumberRange.new(3, 9),
+        Lifetime = NumberRange.new(0.18, 0.5), SpreadAngle = Vector2.new(360, 360), LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.08), NumberSequenceKeypoint.new(0.25, 0.52), NumberSequenceKeypoint.new(1, 0),
+        }), Transparency = NumberSequence.new(0.08), Color = seqColor(c[2], c[3]),
+    })
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1 + (math.floor(t * 2.5) % 3)]
+        light.Brightness = 0.7 + pulse * 4.9
+        local floorCF = getFloorCFrame(hrp, 0.05)
+        updatePulsingDisk(disk, floorCF, t, pulse, 1.7, 2.0)
+        updatePulsingDisk(disk2, floorCF, -t * 1.25, pulse, 2.4, 1.35)
+
+        for i, petal in ipairs(petals) do
+            local a = t * (1.25 + (i % 3) * 0.12) + i * 0.55
+            local r = 1.35 + (i % 4) * 0.48 + pulse * 0.7
+            local y = -1.2 + (i % 5) * 0.56 + math.sin(t * 2.2 + i) * (0.45 + pulse * 0.25)
+            petal.CFrame = torsoCF * CFrame.new(math.cos(a) * r, y, math.sin(a) * r) * CFrame.Angles(t * 1.5 + i, t * 0.9, t * 0.6)
+            local s = 0.12 + pulse * 0.13
+            petal.Size = Vector3.new(s, s * 0.55, s * 1.6)
+        end
+        ribbon.Rate = 8 + math.floor(pulse * 18)
+        if pulse > 0.76 then burstEmitter(spark, 5 + math.floor(pulse * 5)) end
+        if pulse > 0.88 then burstEmitter(sparks, 8 + math.floor(pulse * 10)) end
+    end
+end
+
+local function startTennaFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local scan = {}
+    for i = 1, 6 do
+        scan[i] = addFxPart(folder, Vector3.new(7.2, 0.035, 0.08), c[(i % 2) + 1], 0.30)
+    end
+    local dots = {}
+    for i = 1, 16 do dots[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.13, Vector3.zero) end
+
+    -- Tenna is intentionally anchored to the HumanoidRootPart, not the torso.
+    return function(t, pulse)
+        local rootCF = hrp.CFrame
+        core.CFrame = rootCF
+        light.Color = c[1 + (math.floor(t * 5) % 2)]
+        light.Brightness = 0.7 + pulse * 5.2
+
+        for i, bar in ipairs(scan) do
+            local y = 2.4 - ((t * 3.2 + i * 0.58) % 4.8)
+            bar.CFrame = rootCF * CFrame.new(0, y, -0.18)
+            bar.Size = Vector3.new(6.7 + pulse * 3.2, 0.035 + pulse * 0.025, 0.08)
+            bar.Transparency = 0.20 + (1 - pulse) * 0.25
+        end
+        for i, dot in ipairs(dots) do
+            local gx = ((i - 1) % 4) - 1.5
+            local gy = math.floor((i - 1) / 4) - 1.5
+            local jitter = pulse * math.sin(t * 10 + i)
+            dot.CFrame = rootCF * CFrame.new(gx * 0.58 + jitter, gy * 0.58, -2.0 - pulse * 0.25)
+            local s = 0.10 + pulse * 0.12
+            dot.Size = Vector3.new(s, s, s)
+        end
+        if pulse > 0.82 then burstEmitter(spark, 6 + math.floor(pulse * 4)) end
+    end
+end
+
+local function startAssumptionsFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local bubbles = {}
+    for i = 1, 9 do bubbles[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.22, Vector3.zero) end
+
+    local disks = {}
+    for i = 1, 3 do
+        disks[i] = addPulsingDisk(folder, c[(i % 3) + 1], 2.5 + i * 0.42, 0.13, 0.06 + i * 0.02, 0.13)
+    end
+
+    local char = hrp.Parent
+    for _, name in ipairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+        local limb = char and char:FindFirstChild(name)
+        if limb then addLimbTrail(folder, limb, c, 0.38, 0.95, 0.48) end
+    end
+
+    local pulseShells = {}
+    for i = 1, 4 do
+        pulseShells[i] = addFxPart(folder, Vector3.new(0.08, 0.08, 1.7), c[(i % 3) + 1], 0.16)
+    end
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1]
+        light.Brightness = 0.6 + pulse * 4
+        local floorCF = getFloorCFrame(hrp, 0.05)
+
+        for i, disk in ipairs(disks) do
+            updatePulsingDisk(disk, floorCF, t + i * 0.5, pulse, 1.35 + i * 0.17, 1.5 + i * 0.25)
+        end
+        for i, b in ipairs(bubbles) do
+            local a = t * (1.15 + i * 0.055) + i
+            local r = 1.9 + (i % 3) * 0.4 + pulse * 0.65
+            local y = -1.45 + ((t * 0.65 + i * 0.18) % 3.9)
+            b.CFrame = torsoCF * CFrame.new(math.cos(a) * r, y, math.sin(a) * r)
+            local s = 0.14 + pulse * 0.13
+            b.Size = Vector3.new(s, s, s)
+        end
+        for i, shell in ipairs(pulseShells) do
+            local a = t * (2 + i * 0.2) + i
+            local r = 1.2 + pulse * 0.65
+            shell.CFrame = torsoCF * CFrame.new(math.cos(a) * r, math.sin(a * 1.7) * 1.2, math.sin(a) * r) * CFrame.Angles(a, 0, a * 0.4)
+            local len = 0.8 + pulse * 1.4
+            shell.Size = Vector3.new(0.06 + pulse * 0.03, 0.06 + pulse * 0.03, len)
+        end
+        if pulse > 0.84 then burstEmitter(spark, 4 + math.floor(pulse * 3)) end
+    end
+end
+
+local function startKwikFlipFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+
+    -- Ground reactor: large disks under the dancer.
+    local rings = {}
+    for i = 1, 3 do
+        local ring = addFxPart(folder, Vector3.new(0.14, 3.4, 3.4), c[(i % 3) + 1], 0.10 + i * 0.035)
+        ring.Shape = Enum.PartType.Cylinder
+        ring.Material = Enum.Material.Neon
+        rings[i] = ring
+    end
+
+    -- Floating orbitals: the signature part of the new Kwik Flip effect.
+    local orbs = {}
+    for i = 1, 9 do
+        orbs[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.22, Vector3.zero)
+    end
+
+    -- Rotating "flip shards" around the body.
+    local shards = {}
+    for i = 1, 6 do
+        local shard = addFxPart(folder, Vector3.new(0.10, 0.28, 1.25), c[(i % 3) + 1], 0.12)
+        shard.Material = Enum.Material.Neon
+        shards[i] = shard
+    end
+
+    local spiral = addEmitter(core, {
+        Texture = "rbxassetid://6893912008",
+        Rate = 14,
+        Speed = NumberRange.new(2, 7),
+        Lifetime = NumberRange.new(0.18, 0.5),
+        SpreadAngle = Vector2.new(28, 28),
+        LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.07),
+            NumberSequenceKeypoint.new(0.35, 0.38),
+            NumberSequenceKeypoint.new(0.75, 0.18),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.05),
+            NumberSequenceKeypoint.new(0.6, 0.25),
+            NumberSequenceKeypoint.new(1, 1),
+        }),
+        Color = seqColor(c[1], c[2]),
+    })
+
+    local burst = addEmitter(core, {
+        Texture = "rbxassetid://243660364",
+        Rate = 0,
+        Speed = NumberRange.new(4, 10),
+        Lifetime = NumberRange.new(0.18, 0.42),
+        SpreadAngle = Vector2.new(360, 360),
+        LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.10),
+            NumberSequenceKeypoint.new(0.25, 0.72),
+            NumberSequenceKeypoint.new(1, 0),
+        }),
+        Transparency = NumberSequence.new(0.08),
+        Color = seqColor(c[2], c[3]),
+    })
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1 + (math.floor(t * 5) % 3)]
+        light.Brightness = 0.85 + pulse * 6.5
+        light.Range = 10 + pulse * 10
+
+        -- Disks stay planted beneath the player.
+        local floorCF = getFloorCFrame(hrp, 0.06)
+        for i, ring in ipairs(rings) do
+            local r = 2.0 + i * 0.65 + pulse * (1.2 + i * 0.35)
+            ring.CFrame = floorCF * CFrame.Angles(0, t * (i % 2 == 0 and -2.2 or 2.0) + i, math.rad(90))
+            ring.Size = Vector3.new(0.13 + pulse * 0.08, r, r)
+            ring.Transparency = math.clamp(0.22 - pulse * 0.13 + i * 0.025, 0.04, 0.35)
+        end
+
+        -- Three-dimensional orbital ball swarm around the torso.
+        for i, orb in ipairs(orbs) do
+            local a = t * (2.1 + (i % 3) * 0.28) + i * 0.69
+            local radius = 1.75 + ((i % 3) * 0.52) + pulse * 0.85
+            local y = 0.15 + math.sin(t * 3.2 + i * 0.8) * (0.75 + pulse * 0.35)
+            orb.CFrame = torsoCF * CFrame.new(math.cos(a) * radius, y, math.sin(a) * radius)
+            local s = 0.16 + pulse * 0.16 + (i % 2) * 0.035
+            orb.Size = Vector3.new(s, s, s)
+        end
+
+        -- Tilted shards whip around the dancer like a flip/rotation cage.
+        for i, shard in ipairs(shards) do
+            local a = -t * 3.0 + i * (math.pi * 2 / #shards)
+            local radius = 1.2 + pulse * 0.45
+            local y = math.sin(t * 5 + i) * 0.9
+            shard.CFrame = torsoCF
+                * CFrame.new(math.cos(a) * radius, y, math.sin(a) * radius)
+                * CFrame.Angles(a * 1.7, math.sin(t * 4 + i) * 0.7, a)
+            local thick = 0.07 + pulse * 0.045
+            shard.Size = Vector3.new(thick, 0.18 + pulse * 0.12, 0.75 + pulse * 0.7)
+        end
+
+        spiral.Rate = 12 + math.floor(pulse * 32)
+        if pulse > 0.82 then
+            burstEmitter(burst, 8 + math.floor(pulse * 8))
+            burstEmitter(spark, 5)
+        end
+    end
+end
+
+local function startUnlockItFx(token, e, hrp)
+    local folder, core, light, spark, c = setupBaseFx(token, e, hrp)
+    local lockRings = {}
+    for i = 1, 4 do
+        lockRings[i] = addPulsingDisk(folder, c[(i % 3) + 1], 2.45 + i * 0.45, 0.12 + i * 0.01, 0.06 + i * 0.018, 0.10 + i * 0.02)
+    end
+
+    local stars = {}
+    for i = 1, 14 do stars[i] = addFloatingOrb(folder, c[(i % 3) + 1], 0.16 + (i % 2) * 0.04, Vector3.zero) end
+
+    local shards = {}
+    for i = 1, 8 do
+        shards[i] = addFxPart(folder, Vector3.new(0.10, 0.22, 1.45), c[(i % 3) + 1], 0.12)
+    end
+
+    local verticalBeams = {}
+    for i = 1, 5 do
+        verticalBeams[i] = addFxPart(folder, Vector3.new(0.07, 3.2, 0.07), c[(i % 3) + 1], 0.20)
+    end
+
+    local flare = addEmitter(core, {
+        Texture = "rbxassetid://243660364", Rate = 0, Speed = NumberRange.new(5, 13),
+        Lifetime = NumberRange.new(0.16, 0.42), SpreadAngle = Vector2.new(360, 360), LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.08), NumberSequenceKeypoint.new(0.2, 0.74), NumberSequenceKeypoint.new(1, 0),
+        }), Transparency = NumberSequence.new(0.06), Color = seqColor(c[1], c[3]),
+    })
+
+    local ribbon = addEmitter(core, {
+        Texture = "rbxassetid://6893912008", Rate = 10, Speed = NumberRange.new(1, 5),
+        Lifetime = NumberRange.new(0.25, 0.7), SpreadAngle = Vector2.new(50, 50), LightEmission = 1,
+        Size = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.08), NumberSequenceKeypoint.new(0.4, 0.42), NumberSequenceKeypoint.new(1, 0),
+        }), Transparency = NumberSequence.new(0.16), Color = seqColor(c[2], c[3]),
+    })
+
+    return function(t, pulse)
+        local torsoCF = getTorsoCFrame(hrp)
+        core.CFrame = torsoCF
+        light.Color = c[1 + (math.floor(t * 3) % 3)]
+        light.Brightness = 0.8 + pulse * 5.6
+        light.Range = 11 + pulse * 8
+
+        local floorCF = getFloorCFrame(hrp, 0.045)
+        for i, ring in ipairs(lockRings) do
+            updatePulsingDisk(ring, floorCF, t * (i % 2 == 0 and -1 or 1) + i * 0.28, pulse, 1.25 + i * 0.22, 1.9 + i * 0.26)
+        end
+
+        for i, star in ipairs(stars) do
+            local a = t * (2.2 + (i % 3) * 0.18) + i * 0.63
+            local r = 2.0 + pulse * 1.2 + (i % 3) * 0.14
+            star.CFrame = torsoCF * CFrame.new(math.cos(a) * r, math.sin(a * 1.4) * (1.2 + pulse * 0.4), math.sin(a) * r)
+            local s = 0.10 + pulse * 0.13
+            star.Size = Vector3.new(s,s,s)
+        end
+
+        for i, shard in ipairs(shards) do
+            local a = -t * 2.7 + i * (math.pi * 2 / #shards)
+            local r = 1.25 + pulse * 0.55
+            shard.CFrame = torsoCF * CFrame.new(math.cos(a) * r, math.sin(t * 3 + i) * 1.1, math.sin(a) * r) * CFrame.Angles(a * 1.3, t + i, a)
+            local len = 0.8 + pulse * 1.5
+            shard.Size = Vector3.new(0.07 + pulse * 0.035, 0.14 + pulse * 0.08, len)
+        end
+
+        for i, beam in ipairs(verticalBeams) do
+            local a = (i - 1) * (math.pi * 2 / #verticalBeams) + t * 0.7
+            local r = 2.5 + pulse * 0.55
+            beam.CFrame = floorCF * CFrame.new(math.cos(a) * r, 1.55 + math.sin(t * 2 + i) * 0.45, math.sin(a) * r)
+            beam.Size = Vector3.new(0.06 + pulse * 0.035, 2.2 + pulse * 2.1, 0.06 + pulse * 0.035)
+            beam.Transparency = 0.16 + (1 - pulse) * 0.22
+        end
+
+        ribbon.Rate = 8 + math.floor(pulse * 22)
+        if pulse > 0.73 then burstEmitter(spark, 6 + math.floor(pulse * 5)) end
+        if pulse > 0.86 then burstEmitter(flare, 9 + math.floor(pulse * 10)) end
+    end
+end
+
+local DIRECT_FX_BUILDERS = {
+    Scenario = startScenarioFx,
+    Headlock = startHeadlockFx,
+    ChronoShift = startChronoFx,
+    Springtrap = startSpringtrapFx,
+    Magnetic = startMagneticFx,
+    Subject3 = startSubject3Fx,
+    ["Tenna Dance"] = startTennaFx,
+    ASSUMPTIONS = startAssumptionsFx,
+    ["Kwik Flip"] = startKwikFlipFx,
+    ["UNLOCK IT"] = startUnlockItFx,
+}
+
+local function StartCustomDirectFx(token, e, hrp)
+    if not token or token.cancelled or not e or not e.DirectAnimation then return end
+    if CUSTOM_FX_EXCLUDED[e.Name] then return end
+
+    local builder = DIRECT_FX_BUILDERS[e.Name]
+    if not builder then return end
+
+    local ok, updater = pcall(function()
+        return builder(token, e, hrp)
+    end)
+    if not ok or type(updater) ~= "function" then
+        if token.customFxFolder then
+            pcall(function() token.customFxFolder:Destroy() end)
+            token.customFxFolder = nil
+        end
+        return
+    end
+
+    token.customFxConnection = RunService.Heartbeat:Connect(function()
+        if token.cancelled or ActiveToken ~= token or not hrp or not hrp.Parent then return end
+
+        local sound = CurrentSound
+        local loudness = 0
+        if sound then
+            pcall(function()
+                loudness = math.clamp((sound.PlaybackLoudness or 0) / 260, 0, 1)
+            end)
+        end
+
+        -- Blend real audio amplitude with a deterministic beat pulse so the effects
+        -- still feel alive on executors where PlaybackLoudness is unavailable.
+        local clock = os.clock()
+        local beat = (math.sin(clock * math.pi * 3.2) + 1) * 0.5
+        local pulse = math.clamp(loudness * 0.78 + beat * 0.22, 0, 1)
+
+        pcall(function()
+            updater(clock, pulse)
+        end)
+    end)
+    table.insert(token.connections, token.customFxConnection)
+end
+
+local function StopCustomDirectFx(token, fadeTime)
+    if not token then return end
+    if token.customFxConnection then
+        pcall(function()
+            token.customFxConnection:Disconnect()
+        end)
+        token.customFxConnection = nil
+    end
+    if token.customFxFolder then
+        local folder = token.customFxFolder
+        token.customFxFolder = nil
+        task.delay(fadeTime or 0, function()
+            pcall(function()
+                if folder and folder.Parent then
+                    folder:Destroy()
+                end
+            end)
+        end)
+    end
+end
+
+local function applySoundVolume(sound, baseVolume)
+    if not sound then return end
+    sound.Volume = math.clamp((baseVolume or 1) * MasterVolume, 0, 2)
+end
+local function fadeOutSound(sound, duration)
+    if not sound or not sound.Parent then return end
+    local start = sound.Volume
+    TweenService:Create(sound, TweenInfo.new(duration or TRANSITION_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Volume = 0}):Play()
+    task.delay(duration or TRANSITION_TIME, function()
+        if sound and sound.Parent then sound:Destroy() end
+        if CurrentSound == sound then CurrentSound = nil end
+    end)
+end
+local function createLoadedSound(e)
+    if not e or NoMusicEnabled then return nil end
+    local function makeSound()
+        if not e.LocalAudioId then return nil end
+        local sound = Instance.new("Sound")
+        sound.Name = "EmoteMusic_" .. tostring(e.AudioName or e.Name or "Audio")
+        sound.SoundId = e.LocalAudioId
+        sound.Looped = e.DirectAnimation == true
+        sound.TimePosition = e.StartPos or 0
+        sound.Parent = workspace
+        return sound
+    end
+    local sound = makeSound()
+    if not sound then
+        cacheAudioForEmote(e, true)
+        sound = makeSound()
+    end
+    if not sound then return nil end
+    local loaded = sound.IsLoaded
+    if not loaded then
+        local done = false
+        local conn
+        conn = sound.Loaded:Connect(function()
+            done = true
+        end)
+        local deadline = os.clock() + 1.35
+        while not done and not sound.IsLoaded and os.clock() < deadline do
+            task.wait(0.05)
+        end
+        pcall(function() conn:Disconnect() end)
+        loaded = sound.IsLoaded or done
+    end
+    if not loaded and e.AudioUrl then
+        pcall(function() sound:Destroy() end)
+        e.LocalAudioId = nil
+        if cacheAudioForEmote(e, true) then
+            sound = makeSound()
+            if sound then
+                local done = false
+                local conn = sound.Loaded:Connect(function() done = true end)
+                local deadline = os.clock() + 1.5
+                while not done and not sound.IsLoaded and os.clock() < deadline do
+                    task.wait(0.05)
+                end
+                pcall(function() conn:Disconnect() end)
+                loaded = sound.IsLoaded or done
+            end
+        end
+    end
+    if not loaded then
+        pcall(function() if sound then sound:Destroy() end end)
+        return nil
+    end
+    return sound
+end
+local function PlaySound(e, transition)
+    CurrentSoundFadeToken += 1
+    if CurrentSound then
+        local oldSound = CurrentSound
+        CurrentSound = nil
+        if transition then
+            fadeOutSound(oldSound, TRANSITION_TIME)
+        else
+            pcall(function() oldSound:Destroy() end)
+        end
+    end
+    if NoMusicEnabled then return end
+    if not e.LocalAudioId then
+        cacheAudioForEmote(e, false)
+    end
+    if not e.LocalAudioId then return end
+    local s = createLoadedSound(e)
+    if not s then return end
+    applySoundVolume(s, 1)
+    if transition then
+        s.Volume = 0
+    end
+    s:Play()
+    if transition then
+        TweenService:Create(
+            s,
+            TweenInfo.new(TRANSITION_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Volume = math.clamp(MasterVolume, 0, 2)}
+        ):Play()
+    end
+    CurrentSound = s
+    if not e.DirectAnimation then
+        task.delay(e.Duration or 20, function()
+            if s and s.Parent then s:Destroy() end
+            if CurrentSound == s then CurrentSound = nil end
+        end)
+    end
+end
+local function CancelActiveEmote()
+    if ActiveToken then
+        local token = ActiveToken
+        token.cancelled = true
+        for _, conn in ipairs(token.connections) do
+            pcall(function() conn:Disconnect() end)
+        end
+        token.connections = {}
+        if token.cameraConnection then
+            pcall(function() token.cameraConnection:Disconnect() end)
+            token.cameraConnection = nil
+        end
+        for _, snd in ipairs(token.sounds) do
+            pcall(function()
+                if snd and snd.Parent then snd:Destroy() end
+            end)
+        end
+        for _, trk in ipairs(token.tracks) do
+            pcall(function() trk:Stop(0) end)
+        end
+        local hum = token.humanoid
+        if hum then
+            pcall(function()
+                if token.directTrack then
+                    token.directTrack:Stop(0)
+                end
+                hum.PlatformStand = false
+                hum.Sit = token.oldSit or false
+                hum.AutoRotate = token.oldAutoRotate ~= nil and token.oldAutoRotate or true
+                if token.oldWalkSpeed ~= nil then hum.WalkSpeed = token.oldWalkSpeed end
+                if token.oldUseJumpPower ~= nil then hum.UseJumpPower = token.oldUseJumpPower end
+                if token.oldJumpPower ~= nil then hum.JumpPower = token.oldJumpPower end
+                if token.oldJumpHeight ~= nil then hum.JumpHeight = token.oldJumpHeight end
+                if token.oldCameraOffset then
+                    hum.CameraOffset = token.oldCameraOffset
+                else
+                    hum.CameraOffset = Vector3.zero
+                end
+            end)
+        end
+        if token.restoreGhost then
+            pcall(token.restoreGhost)
+        end
+        local hrp = token.hrp
+        if hrp then
+            pcall(function() hrp.Anchored = false end)
+        end
+        if token.checkpoint then
+            pcall(function()
+                if token.checkpoint.Parent then token.checkpoint:Destroy() end
+            end)
+        end
+        StopCustomDirectFx(token, 0)
+        if token.eyeEffectPart then
+            pcall(function()
+                if token.eyeEffectPart.Parent then
+                    token.eyeEffectPart:Destroy()
+                end
+            end)
+            token.eyeEffectPart = nil
+        end
+        ActiveToken = nil
+    end
+    if CurrentSound then
+        CurrentSound:Destroy()
+        CurrentSound = nil
+    end
+    IsEmoting = false
+    EmoteOrigin = nil
+end
+local function TransitionActiveEmote()
+    local oldToken = ActiveToken
+    if not oldToken then
+        if CurrentSound then
+            fadeOutSound(CurrentSound, TRANSITION_TIME)
+            CurrentSound = nil
+        end
+        return
+    end
+    oldToken.cancelled = true
+    for _, conn in ipairs(oldToken.connections) do pcall(function() conn:Disconnect() end) end
+    oldToken.connections = {}
+    if oldToken.cameraConnection then pcall(function() oldToken.cameraConnection:Disconnect() end) end
+    local oldHum = oldToken.humanoid
+    if oldHum then
+        pcall(function()
+            oldHum.PlatformStand = false
+            oldHum.Sit = oldToken.oldSit or false
+            oldHum.AutoRotate = oldToken.oldAutoRotate ~= nil and oldToken.oldAutoRotate or true
+            if oldToken.oldWalkSpeed ~= nil then oldHum.WalkSpeed = oldToken.oldWalkSpeed end
+            if oldToken.oldUseJumpPower ~= nil then oldHum.UseJumpPower = oldToken.oldUseJumpPower end
+            if oldToken.oldJumpPower ~= nil then oldHum.JumpPower = oldToken.oldJumpPower end
+            if oldToken.oldJumpHeight ~= nil then oldHum.JumpHeight = oldToken.oldJumpHeight end
+            if oldToken.oldCameraOffset then oldHum.CameraOffset = oldToken.oldCameraOffset else oldHum.CameraOffset = Vector3.zero end
+        end)
+    end
+    if oldToken.restoreGhost then pcall(oldToken.restoreGhost) end
+    if oldToken.hrp then pcall(function() oldToken.hrp.Anchored = false end) end
+    if oldToken.checkpoint then pcall(function() if oldToken.checkpoint.Parent then oldToken.checkpoint:Destroy() end end) end
+    StopCustomDirectFx(oldToken, TRANSITION_TIME)
+    for _, snd in ipairs(oldToken.sounds) do
+        if snd and snd.Parent then fadeOutSound(snd, TRANSITION_TIME) end
+    end
+    for _, trk in ipairs(oldToken.tracks) do
+        pcall(function()
+            if trk and trk.IsPlaying then
+                trk:AdjustWeight(0, TRANSITION_TIME)
+                trk:Stop(TRANSITION_TIME)
+            end
+        end)
+    end
+    if oldToken.eyeEffectPart then
+        task.delay(TRANSITION_TIME, function()
+            pcall(function() if oldToken.eyeEffectPart and oldToken.eyeEffectPart.Parent then oldToken.eyeEffectPart:Destroy() end end)
+        end)
+    end
+    ActiveToken = nil
+    IsEmoting = false
+    EmoteOrigin = nil
+end
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    if ActiveToken or IsEmoting then
+        CancelActiveEmote()
+    end
+    Character = newChar
+    Character.Archivable = true
+end)
+local function createSpoofedEnv(fn, token)
+    local character = LocalPlayer.Character
+    local fP = setmetatable({Character = character}, {__index = LocalPlayer})
+    local fPs = setmetatable({LocalPlayer = fP}, {__index = Players})
+    local fRS = setmetatable({}, {
+        __index = function(_, key)
+            local orig = RunService[key]
+            if key == "RenderStepped" or key == "Heartbeat" or key == "Stepped" then
+                return setmetatable({}, {
+                    __index = function(_, mkey)
+                        if mkey == "Connect" then
+                            return function(_, cb)
+                                local conn = RunService[key]:Connect(function(dt)
+                                    if token.cancelled then return end
+                                    cb(dt)
+                                end)
+                                table.insert(token.connections, conn)
+                                return conn
+                            end
+                        end
+                        return orig[mkey]
+                    end
+                })
+            end
+            return orig
+        end
+    })
+    local fG = setmetatable({Players = fPs}, {
+        __index = function(_, k)
+            if k == "GetService" then
+                return function(_, svc)
+                    if svc == "Players" then return fPs end
+                    if svc == "RunService" then return fRS end
+                    return game:GetService(svc)
+                end
+            end
+            return game[k]
+        end
+    })
+    local fTask = setmetatable({}, {
+        __index = function(_, k)
+            if k == "spawn" then
+                return function(cb)
+                    task.spawn(function()
+                        if token.cancelled then return end
+                        cb()
+                    end)
+                end
+            elseif k == "wait" or k == "delay" then
+                return function(t2, cb2)
+                    if cb2 then
+                        task.delay(t2, function()
+                            if token.cancelled then return end
+                            cb2()
+                        end)
+                    else
+                        task.wait(t2)
+                    end
+                end
+            end
+            return task[k]
+        end
+    })
+    local function sfxWrapped(id, parent, duration, startPos)
+        if token.cancelled then return Instance.new("Sound") end
+        local s = Instance.new("Sound")
+        s.SoundId = id
+        s.Parent = parent
+        applySoundVolume(s, 1)
+        s:Play()
+        s.TimePosition = startPos or 0
+        table.insert(token.sounds, s)
+        task.spawn(function()
+            local fadeTime = 3
+            local startFade = math.max((duration or s.TimeLength) - fadeTime, 0)
+            task.wait(startFade)
+            local startVol = s.Volume
+            local steps = 30
+            for i = 1, steps do
+                if not s.Parent or token.cancelled then break end
+                s.Volume = startVol * (1 - (i / steps))
+                task.wait(fadeTime / steps)
+            end
+            if s.Parent then s.Volume = 0 end
+        end)
+        pcall(function() game.Debris:AddItem(s, duration or 0) end)
+        return s
+    end
+    local function humanoidProxy(realHum)
+        return setmetatable({}, {
+            __index = function(_, k)
+                if k == "LoadAnimation" then
+                    return function(_, anim)
+                        local trk = realHum:LoadAnimation(anim)
+                        table.insert(token.tracks, trk)
+                        return trk
+                    end
+                end
+                if not token.humanoid then
+                    token.humanoid = realHum
+                    token.oldSit = realHum.Sit
+                    token.oldAutoRotate = realHum.AutoRotate
+                end
+                return realHum[k]
+            end,
+            __newindex = function(_, k, v)
+                realHum[k] = v
+            end,
+        })
+    end
+    local charProxy = setmetatable({}, {
+        __index = function(_, k)
+            if k == "WaitForChild" then
+                return function(_, name, timeout)
+                    local obj = character:WaitForChild(name, timeout)
+                    if name == "Humanoid" then
+                        return humanoidProxy(obj)
+                    elseif name == "HumanoidRootPart" then
+                        token.hrp = obj
+                    elseif name == "Head" then
+                        token.head = obj
+                    end
+                    return obj
+                end
+            end
+            return character[k]
+        end,
+        __newindex = function(_, k, v) character[k] = v end,
+    })
+    local fPWrapped = setmetatable({Character = charProxy}, {__index = LocalPlayer})
+    local fPsWrapped = setmetatable({LocalPlayer = fPWrapped}, {__index = Players})
+    fG.Players = fPsWrapped
+    local function WaitWrapped(t2)
+        if token.cancelled then return end
+        task.wait(t2)
+    end
+    local env = getfenv(fn)
+    return setmetatable({
+        game = fG,
+        Game = fG,
+        workspace = workspace,
+        task = fTask,
+        Wait = WaitWrapped,
+        wait = WaitWrapped,
+        sfx = sfxWrapped,
+        RunService = fRS,
+        _cancelToken = token,
+    }, {
+        __index = env,
+        __newindex = function(_, k, v) env[k] = v end,
+    })
+end
+local function ExecEmote(e)
+    if IsEmoting or ActiveToken or CurrentSound then
+        TransitionActiveEmote()
+    else
+        CancelActiveEmote()
+    end
+    local token = NewToken()
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then EmoteOrigin = hrp.CFrame end
+    end
+    IsEmoting = true
+    ShowNotification(e.Name, not NoMusicEnabled)
+    if e.DirectAnimation then
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local head = char and char:FindFirstChild("Head")
+        if not hum or not hrp or not head then
+            IsEmoting = false
+            EmoteOrigin = nil
+            ActiveToken = nil
+            return
+        end
+        token.humanoid = hum
+        token.hrp = hrp
+        token.head = head
+        token.oldSit = hum.Sit
+        token.oldAutoRotate = hum.AutoRotate
+        token.oldWalkSpeed = hum.WalkSpeed
+        token.oldJumpPower = hum.JumpPower
+        token.oldJumpHeight = hum.JumpHeight
+        token.oldUseJumpPower = hum.UseJumpPower
+        token.directAnimation = true
+        local anim = Instance.new("Animation")
+        anim.AnimationId = "http://www.roblox.com/asset/?version=" .. tostring(e.Version or 1) .. "&id=" .. tostring(e.AnimationId)
+        local track
+        local ok = pcall(function()
+            track = hum:LoadAnimation(anim)
+        end)
+        anim:Destroy()
+        if not ok or not track then
+            CancelActiveEmote()
+            return
+        end
+        token.directTrack = track
+        table.insert(token.tracks, track)
+        track.Priority = Enum.AnimationPriority.Action
+        track.Looped = true
+        if e.DirectAnimation then
+            hum.AutoRotate = token.oldAutoRotate ~= nil and token.oldAutoRotate or true
+        elseif e.MoveLock then
+            hum.WalkSpeed = 0
+            hum.JumpPower = 0
+            hum.JumpHeight = 0
+            hum.AutoRotate = false
+            hum:Move(Vector3.zero, true)
+        end
+        StartDirectHeadCamera(token, hum, hrp, head)
+        track:Play(0.12, 1, e.AnimationSpeed or 1)
+        if e.Name == EYE_CLOSED_EMOTE then
+            StartEyeClosedEffect(token, hrp)
+        end
+        if e.DirectAnimation and not CUSTOM_FX_EXCLUDED[e.Name] then
+            StartCustomDirectFx(token, e, hrp)
+        end
+        PlaySound(e, true)
+        return
+    end
+    PlaySound(e, true)
+    local early = e.MusicEarly or 0
+    task.spawn(function()
+        local fallback = e.Duration or 30
+        local elapsed = 0
+        local interval = 0.1
+        local waitedForTrack = 0
+        while #token.tracks == 0 and not token.cancelled and waitedForTrack < 3 do
+            task.wait(interval)
+            waitedForTrack += interval
+        end
+        if token.cancelled then return end
+        if #token.tracks == 0 then
+            task.wait(math.max(0, fallback - waitedForTrack))
+            if ActiveToken == token then
+                IsEmoting = false
+                EmoteOrigin = nil
+            end
+            return
+        end
+        while not token.cancelled and elapsed < fallback do
+            task.wait(interval)
+            elapsed += interval
+            local anyPlaying = false
+            for _, trk in ipairs(token.tracks) do
+                if trk and trk.IsPlaying then
+                    anyPlaying = true
+                    break
+                end
+            end
+            if not anyPlaying then break end
+        end
+        if ActiveToken == token and not token.cancelled then
+            IsEmoting = false
+            EmoteOrigin = nil
+        end
+    end)
+    task.delay(early, function()
+        if token.cancelled then return end
+        local code = ScriptCache[e.Name]
+        if code then
+            task.spawn(function()
+                local fn = loadstring(code)
+                if fn then
+                    setfenv(fn, createSpoofedEnv(fn, token))
+                    pcall(fn)
+                    if animator then
+                        for _, playingTrack in ipairs(animator:GetPlayingAnimationTracks()) do
+                            pcall(function() playingTrack.Priority = Enum.AnimationPriority.Action4 end)
+                        end
+                    end
+                end
+            end)
+        else
+            task.spawn(function()
+                while not ScriptCache[e.Name] and not token.cancelled do task.wait(0.05) end
+                if token.cancelled then return end
+                local fn = loadstring(ScriptCache[e.Name])
+                if fn then
+                    setfenv(fn, createSpoofedEnv(fn, token))
+                    pcall(fn)
+                end
+            end)
+        end
+    end)
+end
+local function CanOpenWheelWhileEmoting()
+    return not IsEmoting or (ActiveToken and ActiveToken.directAnimation)
+end
+local function IsDirectEmoteActive()
+    return IsEmoting and ActiveToken and ActiveToken.directAnimation
+end
+local function RunRig(clone, e)
+    task.spawn(function()
+        if e.DirectAnimation then
+            local hum = clone:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
+            local anim = Instance.new("Animation")
+            anim.AnimationId = "http://www.roblox.com/asset/?version=" .. tostring(e.Version or 1) .. "&id=" .. tostring(e.AnimationId)
+            local track
+            local ok = pcall(function()
+                track = hum:LoadAnimation(anim)
+            end)
+            anim:Destroy()
+            if not ok or not track then return end
+            track.Priority = Enum.AnimationPriority.Action4
+            track.Looped = true
+            track:Play(0.12, 1, e.AnimationSpeed or 1)
+            return
+        end
+        while not ScriptCache[e.Name] do
+            task.wait(0.05)
+        end
+        local fn = loadstring(ScriptCache[e.Name])
+        if fn then
+            local animator = clone:FindFirstChildOfClass("Humanoid") and clone:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator")
+            if animator then
+                animator.AnimationPlayed:Connect(function(previewTrack)
+                    pcall(function() previewTrack.Priority = Enum.AnimationPriority.Action4 end)
+                end)
+                for _, playingTrack in ipairs(animator:GetPlayingAnimationTracks()) do
+                    pcall(function() playingTrack.Priority = Enum.AnimationPriority.Action4 end)
+                end
+            end
+            local fP = setmetatable({Character = clone}, {__index = LocalPlayer})
+            local fPs = setmetatable({LocalPlayer = fP}, {__index = Players})
+            local fG = setmetatable({Players = fPs}, {
+                __index = function(_, k)
+                    if k == "GetService" then
+                        return function(_, svc)
+                            if svc == "Players" then return fPs end
+                            return game:GetService(svc)
+                        end
+                    end
+                    return game[k]
+                end
+            })
+            local env = getfenv(fn)
+            setfenv(fn, setmetatable({game=fG, Game=fG, workspace=clone.Parent}, {
+                __index = env,
+                __newindex = function(_,k,v) env[k]=v end
+            }))
+            pcall(fn)
+        end
+    end)
+end
+local function makeBuffer()
+    return table.create(RES * RES * 4, 0)
+end
+local function normAngle(a)
+    local TAU = math.pi * 2
+    while a < 0 do a += TAU end
+    while a >= TAU do a -= TAU end
+    return a
+end
+local function angleInSlice(a, sA, eA)
+    a = normAngle(a)
+    sA = normAngle(sA)
+    eA = normAngle(eA)
+    if sA <= eA then
+        return a >= sA and a < eA
+    else
+        return a >= sA or a < eA
+    end
+end
+local function drawWheel(buf, hovered, pageEmotes)
+    for i = 1, #buf do buf[i] = 0 end
+    local num = #pageEmotes
+    local sliceRad = math.rad(360 / num)
+    local gapRad = math.rad(GAP_DEG)
+    local startBase = -math.pi / 2
+    for i = 1, num do
+        local sA = startBase + (i-1) * sliceRad + gapRad * 0.5
+        local eA = startBase + i * sliceRad - gapRad * 0.5
+        local isH = hovered == i
+        for py = 0, RES-1 do
+            for px = 0, RES-1 do
+                local dx = px - HALF
+                local dy = py - HALF
+                local dist = math.sqrt(dx*dx + dy*dy)
+                if dist >= INNER_R and dist <= OUTER_R then
+                    local ang = math.atan2(dy, dx)
+                    if angleInSlice(ang, sA, eA) then
+                        local t = (dist - INNER_R) / (OUTER_R - INNER_R)
+                        local pr, pg, pb, alpha
+                        if isH then
+                            local bright = math.floor(200 + t * 40)
+                            pr, pg, pb = bright, bright, bright
+                            alpha = math.floor(230 + t * 20)
+                        else
+                            local dark = math.floor(15 + t * 10)
+                            pr, pg, pb = dark, dark, dark
+                            alpha = math.floor(170 + t * 30)
+                        end
+                        if dist > OUTER_R - 2 then
+                            alpha = math.floor(alpha * (OUTER_R - dist) / 2)
+                        elseif dist < INNER_R + 2 then
+                            alpha = math.floor(alpha * (dist - INNER_R) / 2)
+                        end
+                        alpha = math.clamp(alpha, 0, 255)
+                        local idx = (py * RES + px) * 4 + 1
+                        buf[idx] = pr
+                        buf[idx+1] = pg
+                        buf[idx+2] = pb
+                        buf[idx+3] = alpha
+                    end
+                end
+            end
+        end
+    end
+    for py = 0, RES-1 do
+        for px = 0, RES-1 do
+            local dx = px - HALF
+            local dy = py - HALF
+            local dist = math.sqrt(dx*dx + dy*dy)
+            local idx = (py * RES + px) * 4 + 1
+            if math.abs(dist - OUTER_R) < 1.8 then
+                local a = math.max(0, 255 - math.abs(dist - OUTER_R) * 145)
+                buf[idx]=220; buf[idx+1]=220; buf[idx+2]=220; buf[idx+3]=a
+            end
+            if math.abs(dist - INNER_R) < 1.4 then
+                local a = math.max(0, 200 - math.abs(dist - INNER_R) * 155)
+                buf[idx]=180; buf[idx+1]=180; buf[idx+2]=180; buf[idx+3]=a
+            end
+        end
+    end
+    for i = 1, num do
+        local lineAng = startBase + (i-1) * sliceRad
+        local lx = math.cos(lineAng)
+        local ly = math.sin(lineAng)
+        for r = INNER_R, OUTER_R do
+            local wx = HALF + lx * r
+            local wy = HALF + ly * r
+            for ox = -1, 1 do
+                for oy = -1, 1 do
+                    local px2 = math.floor(wx + ox)
+                    local py2 = math.floor(wy + oy)
+                    if px2 >= 0 and px2 < RES and py2 >= 0 and py2 < RES then
+                        local perp = math.abs(ox * (-ly) + oy * lx)
+                        if perp < 0.9 then
+                            local idx = (py2 * RES + px2) * 4 + 1
+                            local alpha = math.floor(220 * (1 - perp))
+                            buf[idx] = 220
+                            buf[idx+1] = 220
+                            buf[idx+2] = 220
+                            buf[idx+3] = math.min(255, buf[idx+3] + alpha)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "EmoteWheelV5"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.DisplayOrder = 1000
+ScreenGui.Parent = CoreGui
+local Overlay = Instance.new("Frame")
+Overlay.Size = UDim2.new(1,0,1,0)
+Overlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+Overlay.BackgroundTransparency = 1
+Overlay.BorderSizePixel = 0
+Overlay.ZIndex = 1
+Overlay.Visible = false
+Overlay.Parent = ScreenGui
+local TopHolder = Instance.new("Frame")
+TopHolder.Size = UDim2.new(0,140,0,28)
+TopHolder.Position = UDim2.new(0.5,-70,0,14)
+TopHolder.BackgroundColor3 = Color3.fromRGB(10,10,10)
+TopHolder.BackgroundTransparency = 0.25
+TopHolder.BorderSizePixel = 0
+TopHolder.ZIndex = 30
+TopHolder.Parent = ScreenGui
+Instance.new("UICorner", TopHolder).CornerRadius = UDim.new(0,14)
+local TopStroke = Instance.new("UIStroke")
+TopStroke.Color = Color3.fromRGB(200,200,200)
+TopStroke.Thickness = 1.2
+TopStroke.Transparency = 0.4
+TopStroke.Parent = TopHolder
+local TopBtn = Instance.new("TextButton")
+TopBtn.Size = UDim2.new(1,0,1,0)
+TopBtn.BackgroundTransparency = 1
+TopBtn.Font = Enum.Font.GothamBold
+TopBtn.TextSize = 11
+TopBtn.TextColor3 = Color3.fromRGB(220,220,220)
+TopBtn.Text = "EMOTES  [Q]"
+TopBtn.ZIndex = 31
+TopBtn.Parent = TopHolder
+local WheelContainer = Instance.new("Frame")
+WheelContainer.Size = UDim2.new(0,DISPLAY,0,DISPLAY)
+WheelContainer.Position = UDim2.new(0.5,-DISPLAY/2,0.5,-DISPLAY/2)
+WheelContainer.BackgroundTransparency = 1
+WheelContainer.ClipsDescendants = false
+WheelContainer.Visible = false
+WheelContainer.ZIndex = 5
+WheelContainer.Parent = ScreenGui
+local CanvasFrame = Instance.new("Frame")
+CanvasFrame.Size = UDim2.new(1,0,1,0)
+CanvasFrame.BackgroundTransparency = 1
+CanvasFrame.ZIndex = 6
+CanvasFrame.Parent = WheelContainer
+local editImg, imgLabel
+pcall(function()
+    editImg = Instance.new("EditableImage")
+    editImg.Size = Vector2.new(RES, RES)
+    imgLabel = Instance.new("ImageLabel")
+    imgLabel.Size = UDim2.new(1,0,1,0)
+    imgLabel.BackgroundTransparency = 1
+    imgLabel.ZIndex = 6
+    imgLabel.Parent = CanvasFrame
+    editImg.Parent = imgLabel
+end)
+local pixBuf = makeBuffer()
+local function redrawWheel(hov, pageEmotes)
+    if not editImg then return end
+    drawWheel(pixBuf, hov, pageEmotes)
+    editImg:WritePixels(Vector2.zero, Vector2.new(RES, RES), pixBuf)
+end
+local function makeArrow(side)
+    local arr = Instance.new("Frame")
+    arr.Size = UDim2.new(0,36,0,36)
+    arr.BackgroundTransparency = 1
+    arr.BorderSizePixel = 0
+    arr.ZIndex = 8
+    arr.Position = side == "left"
+        and UDim2.new(0,-58,0.5,-18)
+        or UDim2.new(1,22,0.5,-18)
+    arr.Parent = WheelContainer
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1,0,1,0)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 26
+    lbl.TextColor3 = Color3.fromRGB(200,200,200)
+    lbl.Text = side == "left" and "<" or ">"
+    lbl.TextXAlignment = Enum.TextXAlignment.Center
+    lbl.ZIndex = 9
+    lbl.Parent = arr
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,0,1,0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    btn.ZIndex = 10
+    btn.Parent = arr
+    btn.MouseEnter:Connect(function()
+        Tween(lbl, {TextColor3 = Color3.fromRGB(255,255,255)}, 0.12)
+    end)
+    btn.MouseLeave:Connect(function()
+        Tween(lbl, {TextColor3 = Color3.fromRGB(200,200,200)}, 0.12)
+    end)
+    return btn, lbl
+end
+local LeftBtn, LeftLbl = makeArrow("left")
+local RightBtn, RightLbl = makeArrow("right")
+local SliceData = {}
+local CloseWheel
+local SliceContainer = Instance.new("Frame")
+SliceContainer.Size = UDim2.new(1,0,1,0)
+SliceContainer.BackgroundTransparency = 1
+SliceContainer.ZIndex = 10
+SliceContainer.Parent = CanvasFrame
+local RigReplayFuncs = {}
+local function buildSlices(pageEmotes)
+    for _, sd in ipairs(SliceData) do
+        if sd.Holder and sd.Holder.Parent then sd.Holder:Destroy() end
+    end
+    SliceData = {}
+    RigReplayFuncs = {}
+    local num = #pageEmotes
+    local sliceDeg = 360 / num
+    local VP_SIZE = 64
+    local vpMidR = (INNER_R + OUTER_R) / 2
+    for i, emote in ipairs(pageEmotes) do
+        local midDeg = -90 + (i-1)*sliceDeg + sliceDeg/2
+        local midRad = math.rad(midDeg)
+        local cx = DISPLAY/2 + math.cos(midRad) * vpMidR * SCALE
+        local cy = DISPLAY/2 + math.sin(midRad) * vpMidR * SCALE
+        local holder = Instance.new("Frame")
+        holder.Size = UDim2.new(0,VP_SIZE,0,VP_SIZE+20)
+        holder.Position = UDim2.new(0,cx-VP_SIZE/2,0,cy-VP_SIZE/2)
+        holder.BackgroundTransparency = 1
+        holder.ZIndex = 10
+        holder.Parent = SliceContainer
+        local vpf = Instance.new("ViewportFrame")
+        vpf.Size = UDim2.new(1,0,0,VP_SIZE)
+        vpf.BackgroundTransparency = 1
+        vpf.ZIndex = 10
+        vpf.Parent = holder
+        Instance.new("UICorner", vpf).CornerRadius = UDim.new(0,8)
+        local wm = Instance.new("WorldModel")
+        wm.Parent = vpf
+        local clone = Character:Clone()
+        clone:PivotTo(CFrame.new(0,-3,0))
+        clone.Parent = wm
+        for _, v in pairs(clone:GetDescendants()) do
+            if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
+        end
+        local rigHum = clone:FindFirstChildOfClass("Humanoid")
+        if rigHum then
+            rigHum.MaxHealth = math.huge
+            rigHum.Health = math.huge
+        end
+        local root = clone:FindFirstChild("HumanoidRootPart") or clone:FindFirstChild("Torso")
+        local cam = Instance.new("Camera")
+        if root then
+            local rp = root.Position
+            cam.CFrame = CFrame.new(rp + Vector3.new(0,0.5,-5.5), rp + Vector3.new(0,0.5,0))
+            cam.FieldOfView = 52
+        end
+        cam.Parent = vpf
+        vpf.CurrentCamera = cam
+        local function ReplayRig()
+            RunRig(clone, emote)
+        end
+        table.insert(RigReplayFuncs, ReplayRig)
+        ReplayRig()
+        local hoverBtn = Instance.new("TextButton")
+        hoverBtn.Size = UDim2.new(0,VP_SIZE+16,0,VP_SIZE+16)
+        hoverBtn.Position = UDim2.new(0,-8,0,-8)
+        hoverBtn.BackgroundTransparency = 1
+        hoverBtn.Text = ""
+        hoverBtn.ZIndex = 25
+        hoverBtn.Active = true
+        hoverBtn.Selectable = false
+        hoverBtn.Parent = holder
+        hoverBtn.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch then
+                HoveredSlice = i
+                local pageEmotesNow = getPageEmotes(CurrentPage)
+                redrawWheel(i, pageEmotesNow)
+            end
+        end)
+        hoverBtn.MouseEnter:Connect(function()
+            if not WheelIsOpen then return end
+            HoveredSlice = i
+            Tween(holder, {Size = UDim2.new(0,VP_SIZE+10,0,VP_SIZE+28)}, 0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            Tween(vpf, {BackgroundTransparency = 0.1}, 0.12)
+        end)
+        hoverBtn.MouseLeave:Connect(function()
+            Tween(holder, {Size = UDim2.new(0,VP_SIZE,0,VP_SIZE+20)}, 0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+            Tween(vpf, {BackgroundTransparency = 1}, 0.12)
+        end)
+        local glowStroke = Instance.new("UIStroke")
+        glowStroke.Color = Color3.fromRGB(255,255,255)
+        glowStroke.Thickness = 2
+        glowStroke.Transparency = 1
+        glowStroke.Parent = vpf
+        local lbl = Instance.new("TextLabel")
+        lbl.Size = UDim2.new(1,10,0,20)
+        lbl.Position = UDim2.new(-0.08,0,0,VP_SIZE+2)
+        lbl.BackgroundTransparency = 1
+        lbl.Font = Enum.Font.GothamBold
+        lbl.TextSize = 9
+        lbl.TextColor3 = Color3.fromRGB(160,160,160)
+        lbl.Text = emote.Short
+        lbl.TextWrapped = true
+        lbl.TextXAlignment = Enum.TextXAlignment.Center
+        lbl.LineHeight = 1.1
+        lbl.ZIndex = 12
+        lbl.Parent = holder
+        SliceData[i] = {
+            Emote = emote,
+            Holder = holder,
+            Label = lbl,
+            GlowStroke = glowStroke,
+        }
+    end
+end
+local hubPx = INNER_R * 2 * SCALE
+local Hub = Instance.new("Frame")
+Hub.Size = UDim2.new(0,hubPx,0,hubPx)
+Hub.Position = UDim2.new(0.5,-hubPx/2,0.5,-hubPx/2)
+Hub.BackgroundTransparency = 1
+Hub.BorderSizePixel = 0
+Hub.ZIndex = 14
+Hub.Parent = WheelContainer
+local HubCorner = Instance.new("UICorner")
+HubCorner.CornerRadius = UDim.new(1,0)
+HubCorner.Parent = Hub
+local VinylImage = Instance.new("ImageLabel")
+VinylImage.Size = UDim2.new(1,0,1,0)
+VinylImage.Position = UDim2.new(0,0,0,0)
+VinylImage.BackgroundTransparency = 1
+VinylImage.BorderSizePixel = 0
+VinylImage.Image = VinylImageId or ""
+VinylImage.ImageTransparency = 0
+VinylImage.ScaleType = Enum.ScaleType.Fit
+VinylImage.ZIndex = 15
+VinylImage.Parent = Hub
+Instance.new("UICorner", VinylImage).CornerRadius = UDim.new(1,0)
+local VinylRotation = 0
+RunService.RenderStepped:Connect(function(dt)
+    if VinylImage and VinylImage.Parent and WheelContainer.Visible then
+        VinylRotation = (VinylRotation + dt * 85) % 360
+        VinylImage.Rotation = VinylRotation
+    end
+end)
+local HubStroke = Instance.new("UIStroke")
+HubStroke.Color = Color3.fromRGB(200,200,200)
+HubStroke.Thickness = 1.2
+HubStroke.Transparency = VinylImageId and 1 or 0.3
+HubStroke.Parent = Hub
+local HubDots = Instance.new("TextLabel")
+HubDots.Size = UDim2.new(1,-8,0,14)
+HubDots.Position = UDim2.new(0,4,0.5,-17)
+HubDots.BackgroundTransparency = 1
+HubDots.TextTransparency = 0
+HubDots.Font = Enum.Font.GothamBold
+HubDots.TextSize = 8
+HubDots.TextColor3 = Color3.fromRGB(220,220,220)
+HubDots.TextXAlignment = Enum.TextXAlignment.Center
+HubDots.TextYAlignment = Enum.TextYAlignment.Center
+HubDots.ZIndex = 17
+HubDots.Parent = Hub
+local HubLabel = Instance.new("TextLabel")
+HubLabel.Size = UDim2.new(1,-10,0,18)
+HubLabel.Position = UDim2.new(0,5,0.5,1)
+HubLabel.BackgroundTransparency = 1
+HubLabel.TextTransparency = 0
+HubLabel.Font = Enum.Font.GothamBold
+HubLabel.TextSize = 10
+HubLabel.TextColor3 = Color3.fromRGB(235,235,235)
+HubLabel.TextXAlignment = Enum.TextXAlignment.Center
+HubLabel.TextYAlignment = Enum.TextYAlignment.Center
+HubLabel.TextTruncate = Enum.TextTruncate.AtEnd
+HubLabel.ZIndex = 17
+HubLabel.Parent = Hub
+local HitArea = Instance.new("TextButton")
+HitArea.Size = UDim2.new(1,0,1,0)
+HitArea.BackgroundTransparency = 1
+HitArea.Text = ""
+HitArea.ZIndex = 20
+HitArea.Parent = CanvasFrame
+local BottomBar = Instance.new("Frame")
+BottomBar.Size = UDim2.new(0,420,0,30)
+BottomBar.Position = UDim2.new(0.5,-210,1,12)
+BottomBar.BackgroundColor3 = Color3.fromRGB(8,8,8)
+BottomBar.BackgroundTransparency = 0.2
+BottomBar.BorderSizePixel = 0
+BottomBar.ZIndex = 5
+BottomBar.Parent = WheelContainer
+Instance.new("UICorner", BottomBar).CornerRadius = UDim.new(0,13)
+local BottomStroke = Instance.new("UIStroke")
+BottomStroke.Color = Color3.fromRGB(160,160,160)
+BottomStroke.Thickness = 1
+BottomStroke.Transparency = 0.5
+BottomStroke.Parent = BottomBar
+local HoldHint = Instance.new("TextLabel")
+HoldHint.Size = UDim2.new(0,112,1,0)
+HoldHint.Position = UDim2.new(0,10,0,0)
+HoldHint.BackgroundTransparency = 1
+HoldHint.Font = Enum.Font.Gotham
+HoldHint.TextSize = 9
+HoldHint.TextXAlignment = Enum.TextXAlignment.Left
+HoldHint.TextColor3 = Color3.fromRGB(150,150,150)
+HoldHint.Text = "Release [Q] to play"
+HoldHint.ZIndex = 6
+HoldHint.Parent = BottomBar
+local PageLabel = Instance.new("TextLabel")
+PageLabel.Size = UDim2.new(0,112,1,0)
+PageLabel.Position = UDim2.new(0,126,0,0)
+PageLabel.BackgroundTransparency = 1
+PageLabel.Font = Enum.Font.GothamBold
+PageLabel.TextSize = 9
+PageLabel.TextXAlignment = Enum.TextXAlignment.Center
+PageLabel.TextTruncate = Enum.TextTruncate.AtEnd
+PageLabel.TextColor3 = Color3.fromRGB(180,180,180)
+PageLabel.Text = "1 / "..TotalPages
+PageLabel.ZIndex = 6
+PageLabel.Parent = BottomBar
+local KeysBtn = Instance.new("TextButton")
+KeysBtn.Size = UDim2.new(0,58,1,-6)
+KeysBtn.Position = UDim2.new(1,-188,0,3)
+KeysBtn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+KeysBtn.BorderSizePixel = 0
+KeysBtn.Font = Enum.Font.GothamBold
+KeysBtn.TextSize = 9
+KeysBtn.TextColor3 = Color3.fromRGB(200,200,200)
+KeysBtn.Text = "KEYS"
+KeysBtn.ZIndex = 7
+KeysBtn.Parent = BottomBar
+local KeysBtnStroke = Instance.new("UIStroke")
+KeysBtnStroke.Color = Color3.fromRGB(200,200,200)
+KeysBtnStroke.Thickness = 1
+KeysBtnStroke.Transparency = 0.5
+KeysBtnStroke.Parent = KeysBtn
+local SettingsBtn = Instance.new("TextButton")
+SettingsBtn.Size = UDim2.new(0,86,1,-6)
+SettingsBtn.Position = UDim2.new(1,-282,0,3)
+SettingsBtn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+SettingsBtn.BorderSizePixel = 0
+SettingsBtn.Font = Enum.Font.GothamBold
+SettingsBtn.TextSize = 9
+SettingsBtn.TextColor3 = Color3.fromRGB(200,200,200)
+SettingsBtn.Text = "SETTINGS"
+SettingsBtn.ZIndex = 7
+SettingsBtn.Parent = BottomBar
+local MusicBtn = Instance.new("TextButton")
+MusicBtn.Size = UDim2.new(0,68,1,-6)
+MusicBtn.Position = UDim2.new(1,-76,0,3)
+MusicBtn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+MusicBtn.BorderSizePixel = 0
+MusicBtn.Font = Enum.Font.GothamSemibold
+MusicBtn.TextSize = 9
+MusicBtn.TextColor3 = Color3.fromRGB(200,200,200)
+MusicBtn.Text = "~ ON"
+MusicBtn.ZIndex = 7
+MusicBtn.Parent = BottomBar
+local KeybindPanelOpen = false
+local KB_ROW_H = 34
+local KB_ROWS = #EMOTES
+local KB_W = 310
+local KB_H = 48 + KB_ROWS * KB_ROW_H
+local KBPanel = Instance.new("Frame")
+KBPanel.Name = "KeybindPanel"
+KBPanel.Size = UDim2.new(0,KB_W,0,KB_H)
+KBPanel.Position = UDim2.new(0.5,-KB_W/2,0.5,-KB_H/2)
+KBPanel.BackgroundColor3 = Color3.fromRGB(8,8,8)
+KBPanel.BackgroundTransparency = 0.06
+KBPanel.BorderSizePixel = 0
+KBPanel.ZIndex = 50
+KBPanel.Visible = false
+KBPanel.Parent = ScreenGui
+local SettingsPanel = Instance.new("Frame")
+SettingsPanel.Name = "SettingsPanel"
+SettingsPanel.Size = UDim2.new(0,320,0,290)
+SettingsPanel.AnchorPoint = Vector2.new(0.5,0.5)
+SettingsPanel.Position = UDim2.new(0.5,0,0.5,0)
+SettingsPanel.BackgroundColor3 = Color3.fromRGB(8,8,8)
+SettingsPanel.BackgroundTransparency = 0.05
+SettingsPanel.BorderSizePixel = 0
+SettingsPanel.ZIndex = 60
+SettingsPanel.Visible = false
+SettingsPanel.Parent = ScreenGui
+local SettingsTitle = Instance.new("TextLabel")
+SettingsTitle.Size = UDim2.new(1,-54,0,34)
+SettingsTitle.Position = UDim2.new(0,16,0,2)
+SettingsTitle.BackgroundTransparency = 1
+SettingsTitle.Font = Enum.Font.GothamBold
+SettingsTitle.TextSize = 13
+SettingsTitle.TextColor3 = Color3.fromRGB(245,245,245)
+SettingsTitle.Text = "SETTINGS"
+SettingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+SettingsTitle.ZIndex = 61
+SettingsTitle.Parent = SettingsPanel
+local SettingsClose = Instance.new("TextButton")
+SettingsClose.Size = UDim2.new(0,32,0,32)
+SettingsClose.Position = UDim2.new(1,-38,0,2)
+SettingsClose.BackgroundTransparency = 1
+SettingsClose.BorderSizePixel = 0
+SettingsClose.Font = Enum.Font.GothamBold
+SettingsClose.TextSize = 13
+SettingsClose.TextColor3 = Color3.fromRGB(200,200,200)
+SettingsClose.Text = "X"
+SettingsClose.ZIndex = 62
+SettingsClose.Parent = SettingsPanel
+local SettingsSub = Instance.new("TextLabel")
+SettingsSub.Size = UDim2.new(1,-32,0,18)
+SettingsSub.Position = UDim2.new(0,16,0,32)
+SettingsSub.BackgroundTransparency = 1
+SettingsSub.Font = Enum.Font.Gotham
+SettingsSub.TextSize = 8
+SettingsSub.TextColor3 = Color3.fromRGB(110,110,110)
+SettingsSub.Text = "Audio, interface, and cache controls"
+SettingsSub.TextXAlignment = Enum.TextXAlignment.Left
+SettingsSub.ZIndex = 61
+SettingsSub.Parent = SettingsPanel
+local SettingsDiv = Instance.new("Frame")
+SettingsDiv.Size = UDim2.new(1,-32,0,1)
+SettingsDiv.Position = UDim2.new(0,16,0,54)
+SettingsDiv.BackgroundColor3 = Color3.fromRGB(200,200,200)
+SettingsDiv.BackgroundTransparency = 0.72
+SettingsDiv.BorderSizePixel = 0
+SettingsDiv.ZIndex = 61
+SettingsDiv.Parent = SettingsPanel
+local function makeSettingLabel(parent, textValue, y)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1,-32,0,18)
+    lbl.Position = UDim2.new(0,16,0,y)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamSemibold
+    lbl.TextSize = 10
+    lbl.TextColor3 = Color3.fromRGB(205,205,205)
+    lbl.Text = textValue
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.ZIndex = 61
+    lbl.Parent = parent
+    return lbl
+end
+local function makeSlider(parent, y, minV, maxV, initialV, formatter, callback)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1,-32,0,42)
+    row.Position = UDim2.new(0,16,0,y)
+    row.BackgroundTransparency = 1
+    row.ZIndex = 61
+    row.Parent = parent
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(0.58,0,0,18)
+    title.Position = UDim2.new(0,0,0,0)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamSemibold
+    title.TextSize = 10
+    title.TextColor3 = Color3.fromRGB(205,205,205)
+    title.Text = formatter and formatter(initialV, true) or tostring(initialV)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 62
+    title.Parent = row
+    local value = Instance.new("TextLabel")
+    value.Size = UDim2.new(0.42,0,0,18)
+    value.Position = UDim2.new(0.58,0,0,0)
+    value.BackgroundTransparency = 1
+    value.Font = Enum.Font.GothamBold
+    value.TextSize = 9
+    value.TextColor3 = Color3.fromRGB(235,235,235)
+    value.Text = formatter and formatter(initialV, false) or tostring(initialV)
+    value.TextXAlignment = Enum.TextXAlignment.Right
+    value.ZIndex = 62
+    value.Parent = row
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1,0,0,5)
+    track.Position = UDim2.new(0,0,0,28)
+    track.BackgroundColor3 = Color3.fromRGB(38,38,38)
+    track.BorderSizePixel = 0
+    track.ZIndex = 62
+    track.Parent = row
+    Instance.new("UICorner", track).CornerRadius = UDim.new(1,0)
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((initialV-minV)/(maxV-minV),0,1,0)
+    fill.BackgroundColor3 = Color3.fromRGB(210,210,210)
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 63
+    fill.Parent = track
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
+    local knob = Instance.new("Frame")
+    knob.Size = UDim2.new(0,11,0,11)
+    knob.AnchorPoint = Vector2.new(0.5,0.5)
+    knob.Position = UDim2.new((initialV-minV)/(maxV-minV),0,0.5,0)
+    knob.BackgroundColor3 = Color3.fromRGB(245,245,245)
+    knob.BorderSizePixel = 0
+    knob.ZIndex = 64
+    knob.Parent = track
+    Instance.new("UICorner", knob).CornerRadius = UDim.new(1,0)
+    local drag = Instance.new("TextButton")
+    drag.Size = UDim2.new(1,18,0,24)
+    drag.Position = UDim2.new(0,-9,0,19)
+    drag.BackgroundTransparency = 1
+    drag.Text = ""
+    drag.ZIndex = 65
+    drag.Parent = row
+    local current = initialV
+    local function setValue(v)
+        current = math.clamp(v, minV, maxV)
+        local pct = (current-minV)/(maxV-minV)
+        fill.Size = UDim2.new(pct,0,1,0)
+        knob.Position = UDim2.new(pct,0,0.5,0)
+        value.Text = formatter and formatter(current, false) or tostring(current)
+        callback(current)
+    end
+    local function updateFromX(x)
+        local left = track.AbsolutePosition.X
+        local width = math.max(track.AbsoluteSize.X,1)
+        setValue(minV + math.clamp((x-left)/width,0,1)*(maxV-minV))
+    end
+    drag.Activated:Connect(function()
+        SettingsDragging = drag
+        updateFromX(UserInputService:GetMouseLocation().X)
+    end)
+    drag.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            SettingsDragging = drag
+            if input.Position then updateFromX(input.Position.X) end
+        end
+    end)
+    drag.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            if SettingsDragging == drag then SettingsDragging = nil end
+        end
+    end)
+    return {
+        Row = row,
+        Title = title,
+        Value = value,
+        Track = track,
+        Fill = fill,
+        Knob = knob,
+        Set = setValue,
+    }
+end
+local VolumeSlider = makeSlider(SettingsPanel, 68, 0, 2, MasterVolume,
+    function(v, titleMode)
+        return titleMode and "MASTER VOLUME" or (("%d%%"):format(math.floor(v*100 + 0.5)))
+    end,
+    function(v)
+        MasterVolume = v
+        if CurrentSound then applySoundVolume(CurrentSound,1) end
+        for _, snd in ipairs((ActiveToken and ActiveToken.sounds) or {}) do
+            if snd and snd.Parent then applySoundVolume(snd,1) end
+        end
+    end)
+local DimSlider = makeSlider(SettingsPanel, 116, 0.25, 0.80, WheelDim,
+    function(v, titleMode)
+        return titleMode and "BACKGROUND DIM" or (("%d%%"):format(math.floor(v*100 + 0.5)))
+    end,
+    function(v)
+        WheelDim = v
+        if WheelIsOpen then
+            Tween(Overlay, {BackgroundTransparency = WheelDim}, 0.12)
+        end
+    end)
+local function makeToggle(parent, y, labelText, initial, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,-32,0,34)
+    btn.Position = UDim2.new(0,16,0,y)
+    btn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 9
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextColor3 = Color3.fromRGB(200,200,200)
+    btn.ZIndex = 62
+    btn.Parent = parent
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+    local state = initial
+    local function render()
+        btn.Text = labelText .. "    " .. (state and "ON" or "OFF")
+        Tween(btn, {
+            BackgroundColor3 = state and Color3.fromRGB(22,22,22) or Color3.fromRGB(16,16,16),
+            TextColor3 = Color3.fromRGB(200,200,200),
+        }, 0.12)
+    end
+    btn.Activated:Connect(function()
+        state = not state
+        callback(state)
+        render()
+    end)
+    render()
+    return {
+        Button = btn,
+        Set = function(v)
+            state = v
+            callback(v)
+            render()
+        end
+    }
+end
+local NotificationsToggle = makeToggle(SettingsPanel, 164, "EMOTE NOTIFICATIONS", NotificationsOn,
+    function(v) NotificationsOn = v end)
+local RedownloadBtn = Instance.new("TextButton")
+RedownloadBtn.Size = UDim2.new(1,-32,0,34)
+RedownloadBtn.Position = UDim2.new(0,16,0,206)
+RedownloadBtn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+RedownloadBtn.BorderSizePixel = 0
+RedownloadBtn.AutoButtonColor = false
+RedownloadBtn.Font = Enum.Font.GothamBold
+RedownloadBtn.TextSize = 9
+RedownloadBtn.TextColor3 = Color3.fromRGB(220,220,220)
+RedownloadBtn.Text = "REFRESH ALL MUSIC"
+RedownloadBtn.ZIndex = 62
+RedownloadBtn.Parent = SettingsPanel
+local SettingsResetBtn = Instance.new("TextButton")
+SettingsResetBtn.Size = UDim2.new(0,116,0,24)
+SettingsResetBtn.Position = UDim2.new(0,16,0,248)
+SettingsResetBtn.BackgroundColor3 = Color3.fromRGB(14,14,14)
+SettingsResetBtn.BorderSizePixel = 0
+SettingsResetBtn.AutoButtonColor = false
+SettingsResetBtn.Font = Enum.Font.GothamSemibold
+SettingsResetBtn.TextSize = 8
+SettingsResetBtn.TextColor3 = Color3.fromRGB(155,155,155)
+SettingsResetBtn.Text = "RESET SETTINGS"
+SettingsResetBtn.ZIndex = 62
+SettingsResetBtn.Parent = SettingsPanel
+local SettingsStatusLabel = Instance.new("TextLabel")
+SettingsStatusLabel.Size = UDim2.new(1,-148,0,24)
+SettingsStatusLabel.Position = UDim2.new(0,140,0,248)
+SettingsStatusLabel.BackgroundTransparency = 1
+SettingsStatusLabel.Font = Enum.Font.Gotham
+SettingsStatusLabel.TextSize = 8
+SettingsStatusLabel.TextColor3 = Color3.fromRGB(125,125,125)
+SettingsStatusLabel.Text = ""
+SettingsStatusLabel.TextXAlignment = Enum.TextXAlignment.Right
+SettingsStatusLabel.TextTruncate = Enum.TextTruncate.AtEnd
+SettingsStatusLabel.ZIndex = 62
+SettingsStatusLabel.Parent = SettingsPanel
+UserInputService:GetPropertyChangedSignal("KeyboardEnabled"):Connect(function()
+end)
+SettingsClose.MouseEnter:Connect(function() Tween(SettingsClose,{TextColor3=Color3.fromRGB(255,255,255)},0.10) end)
+SettingsClose.MouseLeave:Connect(function() Tween(SettingsClose,{TextColor3=Color3.fromRGB(200,200,200)},0.10) end)
+local function closeSettingsPanel()
+    SettingsOpen = false
+    SettingsDragging = nil
+    Tween(SettingsPanel, {BackgroundTransparency = 1}, 0.14, Enum.EasingStyle.Quad)
+    task.delay(0.15, function()
+        if not SettingsOpen then SettingsPanel.Visible = false end
+    end)
+    Tween(SettingsBtn, {TextColor3 = Color3.fromRGB(200,200,200), BackgroundColor3 = Color3.fromRGB(18,18,18)}, 0.12)
+end
+local function openSettingsPanel()
+    SettingsOpen = true
+    SettingsPanel.Visible = true
+    SettingsPanel.BackgroundTransparency = 1
+    Tween(SettingsPanel, {BackgroundTransparency = 0.05}, 0.16, Enum.EasingStyle.Quad)
+    Tween(SettingsBtn, {TextColor3 = Color3.fromRGB(255,255,255), BackgroundColor3 = Color3.fromRGB(28,28,28)}, 0.12)
+end
+SettingsClose.Activated:Connect(closeSettingsPanel)
+local function resetSettings()
+    VolumeSlider.Set(1)
+    DimSlider.Set(0.55)
+    NotificationsToggle.Set(true)
+    SettingsStatusLabel.Text = "Settings reset"
+    task.delay(1.6, function()
+        if SettingsStatusLabel.Parent then SettingsStatusLabel.Text = "" end
+    end)
+end
+SettingsResetBtn.Activated:Connect(resetSettings)
+local function redownloadAllAudio()
+    if not (writefile and isfile and getAsset and game.HttpGet) then
+        SettingsStatusLabel.Text = "Executor lacks file/download APIs"
+        return
+    end
+    ensureMusicFolder()
+    RedownloadBtn.Active = false
+    RedownloadBtn.Text = "REFRESHING..."
+    SettingsStatusLabel.Text = "Clearing music cache..."
+    for _, e in ipairs(EMOTES) do
+        if e.AudioUrl and e.AudioName then
+            local fn = musicFileName(e.AudioName)
+            if isfile(fn) and delfile then pcall(function() delfile(fn) end) end
+            e.LocalAudioId = nil
+        end
+    end
+    local total, done = 0, 0
+    for _, e in ipairs(EMOTES) do if e.AudioUrl and e.AudioName then total += 1 end end
+    for _, e in ipairs(EMOTES) do
+        if e.AudioUrl and e.AudioName then
+            done += 1
+            SettingsStatusLabel.Text = ("Refreshing %d/%d"):format(done, total)
+            cacheAudioForEmote(e, true)
+            task.wait()
+        end
+    end
+    RedownloadBtn.Text = "REFRESH ALL MUSIC"
+    RedownloadBtn.Active = true
+    SettingsStatusLabel.Text = "Music cache refreshed"
+    task.delay(2.0, function()
+        if SettingsStatusLabel.Parent then SettingsStatusLabel.Text = "" end
+    end)
+end
+RedownloadBtn.Activated:Connect(redownloadAllAudio)
+UserInputService.InputChanged:Connect(function(input)
+    if not SettingsDragging then return end
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch then
+        local track = SettingsDragging.Parent and SettingsDragging.Parent:FindFirstChild("Frame")
+        if track and track:IsA("Frame") then
+            local x = input.Position.X
+            local left = track.AbsolutePosition.X
+            local width = math.max(track.AbsoluteSize.X,1)
+            local pct = math.clamp((x-left)/width,0,1)
+            local row = SettingsDragging.Parent
+            if VolumeSlider.Row == row then VolumeSlider.Set(pct*2)
+            elseif DimSlider.Row == row then DimSlider.Set(0.25+pct*0.55)
+            end
+        end
+    end
+end)
+local KBTitle = Instance.new("TextLabel")
+KBTitle.Size = UDim2.new(1,-50,0,36)
+KBTitle.Position = UDim2.new(0,16,0,0)
+KBTitle.BackgroundTransparency = 1
+KBTitle.Font = Enum.Font.GothamBold
+KBTitle.TextSize = 13
+KBTitle.TextColor3 = Color3.fromRGB(240,240,240)
+KBTitle.Text = "KEYBINDS"
+KBTitle.TextXAlignment = Enum.TextXAlignment.Left
+KBTitle.ZIndex = 51
+KBTitle.Parent = KBPanel
+local KBHint = Instance.new("TextLabel")
+KBHint.Size = UDim2.new(1,-16,0,14)
+KBHint.Position = UDim2.new(0,16,0,22)
+KBHint.BackgroundTransparency = 1
+KBHint.Font = Enum.Font.Gotham
+KBHint.TextSize = 8
+KBHint.TextColor3 = Color3.fromRGB(110,110,110)
+KBHint.Text = "Click a slot then press any key  |  ESC to cancel"
+KBHint.TextXAlignment = Enum.TextXAlignment.Left
+KBHint.ZIndex = 51
+KBHint.Parent = KBPanel
+local KBClose = Instance.new("TextButton")
+KBClose.Size = UDim2.new(0,32,0,32)
+KBClose.Position = UDim2.new(1,-38,0,2)
+KBClose.BackgroundTransparency = 1
+KBClose.BorderSizePixel = 0
+KBClose.Font = Enum.Font.GothamBold
+KBClose.TextSize = 13
+KBClose.TextColor3 = Color3.fromRGB(200,200,200)
+KBClose.Text = "X"
+KBClose.ZIndex = 52
+KBClose.Parent = KBPanel
+local KBDiv = Instance.new("Frame")
+KBDiv.Size = UDim2.new(1,-32,0,1)
+KBDiv.Position = UDim2.new(0,16,0,38)
+KBDiv.BackgroundColor3 = Color3.fromRGB(200,200,200)
+KBDiv.BackgroundTransparency = 0.65
+KBDiv.BorderSizePixel = 0
+KBDiv.ZIndex = 51
+KBDiv.Parent = KBPanel
+local function keyCodeName(kc)
+    local s = tostring(kc)
+    return s:match("%.([^%.]+)$") or s
+end
+local function cancelListening()
+    if ListeningKeyBtn then
+        Tween(ListeningKeyBtn, {BackgroundColor3 = Color3.fromRGB(16,16,16)}, 0.12)
+        local eName = ListeningEmote
+        if eName then
+            local kc = KEYBINDS[eName]
+            ListeningKeyBtn.Text = kc and ("["..keyCodeName(kc).."]") or "none"
+            ListeningKeyBtn.TextColor3 = kc and Color3.fromRGB(220,220,220) or Color3.fromRGB(70,70,70)
+        end
+    end
+    ListeningEmote = nil
+    ListeningKeyBtn = nil
+end
+local function buildKeybindPanel()
+    for _, row in pairs(KeybindRows) do
+        if row.Frame and row.Frame.Parent then row.Frame:Destroy() end
+    end
+    KeybindRows = {}
+    for idx, emote in ipairs(EMOTES) do
+        local rowY = 42 + (idx-1) * KB_ROW_H
+        local rowFrame = Instance.new("Frame")
+        rowFrame.Size = UDim2.new(1,0,0,KB_ROW_H)
+        rowFrame.Position = UDim2.new(0,0,0,rowY)
+        rowFrame.BackgroundColor3 = idx % 2 == 0 and Color3.fromRGB(14,14,14) or Color3.fromRGB(10,10,10)
+        rowFrame.BackgroundTransparency = 0
+        rowFrame.BorderSizePixel = 0
+        rowFrame.ZIndex = 51
+        rowFrame.Parent = KBPanel
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size = UDim2.new(0,140,1,0)
+        nameLbl.Position = UDim2.new(0,16,0,0)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Font = Enum.Font.GothamSemibold
+        nameLbl.TextSize = 10
+        nameLbl.TextColor3 = Color3.fromRGB(190,190,190)
+        nameLbl.Text = emote.Name
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.TextTruncate = Enum.TextTruncate.AtEnd
+        nameLbl.ZIndex = 52
+        nameLbl.Parent = rowFrame
+        local kc = KEYBINDS[emote.Name]
+        local keyBtn = Instance.new("TextButton")
+        keyBtn.Size = UDim2.new(0,100,0,KB_ROW_H-8)
+        keyBtn.Position = UDim2.new(0,158,0,4)
+        keyBtn.BackgroundColor3 = Color3.fromRGB(16,16,16)
+        keyBtn.BorderSizePixel = 0
+        keyBtn.Font = Enum.Font.GothamBold
+        keyBtn.TextSize = 9
+        keyBtn.TextColor3 = kc and Color3.fromRGB(220,220,220) or Color3.fromRGB(70,70,70)
+        keyBtn.Text = kc and ("["..keyCodeName(kc).."]") or "none"
+        keyBtn.ZIndex = 52
+        keyBtn.Parent = rowFrame
+        local keyStroke = Instance.new("UIStroke")
+        keyStroke.Color = Color3.fromRGB(180,180,180)
+        keyStroke.Thickness = 1
+        keyStroke.Transparency = 0.55
+        keyStroke.Parent = keyBtn
+        local clearBtn = Instance.new("TextButton")
+        clearBtn.Size = UDim2.new(0,32,0,KB_ROW_H-8)
+        clearBtn.Position = UDim2.new(1,-44,0,4)
+        clearBtn.BackgroundColor3 = Color3.fromRGB(16,16,16)
+        clearBtn.BorderSizePixel = 0
+        clearBtn.Font = Enum.Font.GothamBold
+        clearBtn.TextSize = 8
+        clearBtn.TextColor3 = Color3.fromRGB(140,60,60)
+        clearBtn.Text = "X"
+        clearBtn.ZIndex = 52
+        clearBtn.Parent = rowFrame
+        local clrStroke = Instance.new("UIStroke")
+        clrStroke.Color = Color3.fromRGB(160,60,60)
+        clrStroke.Thickness = 1
+        clrStroke.Transparency = 0.5
+        clrStroke.Parent = clearBtn
+        local emoteName = emote.Name
+        keyBtn.MouseButton1Click:Connect(function()
+            if ListeningEmote == emoteName then
+                cancelListening()
+                return
+            end
+            cancelListening()
+            ListeningEmote = emoteName
+            ListeningKeyBtn = keyBtn
+            Tween(keyBtn, {BackgroundColor3 = Color3.fromRGB(30,28,10)}, 0.12)
+            keyBtn.TextColor3 = Color3.fromRGB(240,210,60)
+            keyBtn.Text = "Press key..."
+        end)
+        keyBtn.MouseEnter:Connect(function()
+            if ListeningEmote ~= emoteName then
+                Tween(keyBtn, {BackgroundColor3 = Color3.fromRGB(26,26,26)}, 0.10)
+            end
+        end)
+        keyBtn.MouseLeave:Connect(function()
+            if ListeningEmote ~= emoteName then
+                Tween(keyBtn, {BackgroundColor3 = Color3.fromRGB(16,16,16)}, 0.10)
+            end
+        end)
+        clearBtn.MouseButton1Click:Connect(function()
+            if ListeningEmote == emoteName then cancelListening() end
+            KEYBINDS[emoteName] = nil
+            keyBtn.Text = "none"
+            keyBtn.TextColor3 = Color3.fromRGB(70,70,70)
+            Tween(keyBtn, {BackgroundColor3 = Color3.fromRGB(16,16,16)}, 0.12)
+        end)
+        clearBtn.MouseEnter:Connect(function()
+            Tween(clearBtn, {TextColor3 = Color3.fromRGB(255,80,80)}, 0.10)
+        end)
+        clearBtn.MouseLeave:Connect(function()
+            Tween(clearBtn, {TextColor3 = Color3.fromRGB(140,60,60)}, 0.10)
+        end)
+        KeybindRows[emoteName] = {
+            Frame = rowFrame,
+            KeyBtn = keyBtn,
+            ClearBtn = clearBtn,
+        }
+    end
+end
+local function openKeybindPanel()
+    KeybindPanelOpen = true
+    buildKeybindPanel()
+    KBPanel.Visible = true
+    KBPanel.BackgroundTransparency = 1
+    Tween(KBPanel, {BackgroundTransparency = 0.06}, 0.18, Enum.EasingStyle.Quad)
+    Tween(KeysBtn, {TextColor3 = Color3.fromRGB(255,255,255), BackgroundColor3 = Color3.fromRGB(28,28,28)}, 0.15)
+end
+local function closeKeybindPanel()
+    cancelListening()
+    KeybindPanelOpen = false
+    Tween(KBPanel, {BackgroundTransparency = 1}, 0.15, Enum.EasingStyle.Quad)
+    task.delay(0.16, function() KBPanel.Visible = false end)
+    Tween(KeysBtn, {TextColor3 = Color3.fromRGB(200,200,200), BackgroundColor3 = Color3.fromRGB(18,18,18)}, 0.15)
+end
+SettingsBtn.Activated:Connect(function()
+    if KeybindPanelOpen then closeKeybindPanel() end
+    if SettingsOpen then closeSettingsPanel() else openSettingsPanel() end
+end)
+KeysBtn.MouseButton1Click:Connect(function()
+    if SettingsOpen then closeSettingsPanel() end
+    if KeybindPanelOpen then closeKeybindPanel() else openKeybindPanel() end
+end)
+KBClose.MouseButton1Click:Connect(closeKeybindPanel)
+KBClose.MouseEnter:Connect(function() Tween(KBClose, {TextColor3 = Color3.fromRGB(255,255,255)}, 0.10) end)
+KBClose.MouseLeave:Connect(function() Tween(KBClose, {TextColor3 = Color3.fromRGB(200,200,200)}, 0.10) end)
+local function updateBottomBarLayout()
+    local touch = UserInputService.TouchEnabled
+    local keyboard = UserInputService.KeyboardEnabled
+    local showKeys = (not touch) or keyboard
+    KeysBtn.Visible = showKeys
+    if showKeys then
+        BottomBar.Size = UDim2.new(0,420,0,30)
+        BottomBar.Position = UDim2.new(0.5,-210,1,12)
+        HoldHint.Size = UDim2.new(0,112,1,0)
+        PageLabel.Position = UDim2.new(0,126,0,0)
+        PageLabel.Size = UDim2.new(0,112,1,0)
+        SettingsBtn.Size = UDim2.new(0,86,1,-6)
+        SettingsBtn.Position = UDim2.new(1,-282,0,3)
+        KeysBtn.Size = UDim2.new(0,58,1,-6)
+        KeysBtn.Position = UDim2.new(1,-188,0,3)
+        MusicBtn.Size = UDim2.new(0,68,1,-6)
+        MusicBtn.Position = UDim2.new(1,-76,0,3)
+    else
+        BottomBar.Size = UDim2.new(0,330,0,30)
+        BottomBar.Position = UDim2.new(0.5,-165,1,12)
+        HoldHint.Size = UDim2.new(0,108,1,0)
+        PageLabel.Position = UDim2.new(0,116,0,0)
+        PageLabel.Size = UDim2.new(0,108,1,0)
+        SettingsBtn.Size = UDim2.new(0,86,1,-6)
+        SettingsBtn.Position = UDim2.new(1,-176,0,3)
+        MusicBtn.Size = UDim2.new(0,68,1,-6)
+        MusicBtn.Position = UDim2.new(1,-80,0,3)
+    end
+end
+updateBottomBarLayout()
+UserInputService:GetPropertyChangedSignal("KeyboardEnabled"):Connect(updateBottomBarLayout)
+UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(updateBottomBarLayout)
+local function updateArrowVisibility()
+    local show = (#AnimationSections > 1) or TotalPages > 1
+    LeftLbl.TextTransparency = show and 0 or 1
+    RightLbl.TextTransparency = show and 0 or 1
+end
+local PageTransitioning = false
+local function setSection(sectionIndex, page)
+    CurrentSection = math.clamp(sectionIndex, 1, #AnimationSections)
+    TotalPages = getSectionPageCount(CurrentSection)
+    CurrentPage = math.clamp(page or 1, 1, TotalPages)
+end
+local function loadPage(page, skipRig, direction, targetSection)
+    if PageTransitioning and not skipRig then return end
+    if targetSection then
+        setSection(targetSection, page)
+    else
+        CurrentPage = math.clamp(page, 1, TotalPages)
+    end
+    HoveredSlice = nil
+    local pageEmotes = getPageEmotes(CurrentPage)
+    if WheelIsOpen and not skipRig and direction then
+        PageTransitioning = true
+        local offsetX = direction == "right" and -80 or 80
+        Tween(WheelContainer, {Position = UDim2.new(0.5,-DISPLAY/2+offsetX,0.5,-DISPLAY/2)}, 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        task.delay(0.13, function()
+            buildSlices(pageEmotes)
+            redrawWheel(nil, pageEmotes)
+            WheelContainer.Position = UDim2.new(0.5,-DISPLAY/2-offsetX,0.5,-DISPLAY/2)
+            Tween(WheelContainer, {Position = UDim2.new(0.5,-DISPLAY/2,0.5,-DISPLAY/2)}, 0.20, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            if WheelIsOpen then
+                for _, fn in ipairs(RigReplayFuncs) do fn() end
+            end
+            task.delay(0.22, function() PageTransitioning = false end)
+        end)
+    else
+        buildSlices(pageEmotes)
+        redrawWheel(nil, pageEmotes)
+        if WheelIsOpen and not skipRig then
+            for _, fn in ipairs(RigReplayFuncs) do fn() end
+        end
+    end
+    PageLabel.Text = getSectionNotificationText(CurrentSection).."  "..CurrentPage.." / "..TotalPages
+    HubLabel.Text = "SELECT"
+    HubDots.Text = ""
+    Tween(HubLabel, {TextColor3 = Color3.fromRGB(180,180,180)}, 0.1)
+    Tween(HubDots, {TextColor3 = Color3.fromRGB(240,240,240)}, 0.1)
+    Tween(HubStroke, {Transparency = VinylImageId and 1 or 0.3, Color = Color3.fromRGB(200,200,200)}, 0.1)
+    updateArrowVisibility()
+end
+local function notifySection(sectionIndex)
+    local sectionName = getSectionNotificationText(sectionIndex)
+    ShowNotification(sectionName, nil, "You're in "..sectionName)
+end
+LeftBtn.MouseButton1Click:Connect(function()
+    local newPage = CurrentPage - 1
+    local targetSection = CurrentSection
+    if newPage < 1 then
+        targetSection -= 1
+        if targetSection < 1 then targetSection = #AnimationSections end
+        newPage = getSectionPageCount(targetSection)
+        if targetSection ~= CurrentSection then notifySection(targetSection) end
+    end
+    loadPage(newPage, false, "left", targetSection)
+end)
+RightBtn.MouseButton1Click:Connect(function()
+    local newPage = CurrentPage + 1
+    local targetSection = CurrentSection
+    if newPage > TotalPages then
+        targetSection += 1
+        if targetSection > #AnimationSections then targetSection = 1 end
+        newPage = 1
+        if targetSection ~= CurrentSection then notifySection(targetSection) end
+    end
+    loadPage(newPage, false, "right", targetSection)
+end)
+local function getSliceAtPosition(position)
+    local pageEmotes = getPageEmotes(CurrentPage)
+    local num = #pageEmotes
+    if num <= 0 then return nil end
+    local sliceDeg = 360 / num
+    local abs = CanvasFrame.AbsolutePosition
+    local sz = CanvasFrame.AbsoluteSize
+    local cx = abs.X + sz.X / 2
+    local cy = abs.Y + sz.Y / 2
+    local dx = position.X - cx
+    local dy = position.Y - cy
+    local dist = math.sqrt(dx*dx + dy*dy)
+    local pxS = sz.X / DISPLAY
+    local outerPx = OUTER_R * SCALE * pxS
+    local innerPx = INNER_R * SCALE * pxS
+    if dist < innerPx or dist > outerPx * 1.15 then
+        return nil
+    end
+    local angle = math.deg(math.atan2(dy, dx)) + 90
+    if angle < 0 then angle += 360 end
+    return math.floor(angle / sliceDeg) % num + 1
+end
+local function getSliceAtMouse()
+    return getSliceAtPosition(UserInputService:GetMouseLocation())
+end
+RunService.Heartbeat:Connect(function()
+    if not WheelContainer.Visible then return end
+    local idx = getSliceAtMouse()
+    if idx == HoveredSlice then return end
+    HoveredSlice = idx
+    local pageEmotes = getPageEmotes(CurrentPage)
+    redrawWheel(idx, pageEmotes)
+    if idx and SliceData[idx] then
+        local emote = pageEmotes[idx]
+        HubLabel.Text = emote and emote.Short or "SELECT"
+        HubDots.Text = "O  O"
+        Tween(HubLabel, {TextColor3 = Color3.fromRGB(255,255,255)}, 0.12)
+        Tween(HubDots, {TextColor3 = Color3.fromRGB(255,255,255)}, 0.12)
+        Tween(HubStroke, {Transparency = 0, Color = Color3.fromRGB(255,255,255)}, 0.12)
+    else
+        HubLabel.Text = "SELECT"
+        HubDots.Text = "O  O"
+        Tween(HubLabel, {TextColor3 = Color3.fromRGB(160,160,160)}, 0.12)
+        Tween(HubDots, {TextColor3 = Color3.fromRGB(220,220,220)}, 0.12)
+        Tween(HubStroke, {Transparency = 0.3, Color = Color3.fromRGB(200,200,200)}, 0.12)
+    end
+    for i, sd in ipairs(SliceData) do
+        if i == idx then
+            Tween(sd.Label, {TextColor3 = Color3.fromRGB(15,15,15)}, 0.10)
+            Tween(sd.GlowStroke, {Transparency = 0}, 0.10)
+        else
+            Tween(sd.Label, {TextColor3 = Color3.fromRGB(200,200,200)}, 0.10)
+            Tween(sd.GlowStroke, {Transparency = 1}, 0.10)
+        end
+    end
+end)
+local function selectEmoteAtPosition(position)
+    if not WheelIsOpen or PageTransitioning or SettingsOpen or KeybindPanelOpen then return end
+    if IsEmoting and not IsDirectEmoteActive() then return end
+    if not position then return end
+    local idx = getSliceAtPosition(position)
+    if not idx then return end
+    local sd = SliceData[idx]
+    if not sd or not sd.Emote then return end
+    HoveredSlice = idx
+    local pageEmotes = getPageEmotes(CurrentPage)
+    redrawWheel(idx, pageEmotes)
+    local emote = sd.Emote
+    CloseWheel()
+    task.delay(0.05, function()
+        if WheelIsOpen == false then
+            ExecEmote(emote)
+        end
+    end)
+end
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    if not WheelIsOpen or PageTransitioning then return end
+    if IsEmoting and not IsDirectEmoteActive() then return end
+    selectEmoteAtPosition(input.Position)
+end)
+UserInputService.TouchTap:Connect(function(touchPositions)
+    if not touchPositions or #touchPositions == 0 then return end
+    selectEmoteAtPosition(touchPositions[1])
+end)
+local function OpenWheel()
+    if WheelIsOpen then return end
+    if IsEmoting and not IsDirectEmoteActive() then return end
+    WheelIsOpen = true
+    HoveredSlice = nil
+    Overlay.Visible = true
+    Overlay.BackgroundTransparency = 1
+    Tween(Overlay, {BackgroundTransparency = WheelDim}, 0.2, Enum.EasingStyle.Quad)
+    WheelContainer.Visible = true
+    WheelContainer.Size = UDim2.new(0,DISPLAY*0.6,0,DISPLAY*0.6)
+    WheelContainer.Position = UDim2.new(0.5,-DISPLAY*0.3,0.5,-DISPLAY*0.3)
+    Tween(WheelContainer, {
+        Size = UDim2.new(0,DISPLAY,0,DISPLAY),
+        Position = UDim2.new(0.5,-DISPLAY/2,0.5,-DISPLAY/2),
+    }, 0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local pageEmotes = getPageEmotes(CurrentPage)
+    redrawWheel(nil, pageEmotes)
+    for _, fn in ipairs(RigReplayFuncs) do fn() end
+    notifySection(CurrentSection)
+    TopBtn.Text = "CLOSE  x"
+    Tween(TopBtn, {TextColor3 = Color3.fromRGB(220,220,220)}, 0.18)
+    Tween(TopStroke, {Color = Color3.fromRGB(220,220,220), Transparency = 0.15}, 0.18)
+end
+CloseWheel = function()
+    if not WheelIsOpen then return end
+    if SettingsOpen then closeSettingsPanel() end
+    if KeybindPanelOpen then closeKeybindPanel() end
+    WheelIsOpen = false
+    HoveredSlice = nil
+    Tween(Overlay, {BackgroundTransparency = 1}, 0.18, Enum.EasingStyle.Quad)
+    Tween(WheelContainer, {
+        Size = UDim2.new(0,DISPLAY*0.6,0,DISPLAY*0.6),
+        Position = UDim2.new(0.5,-DISPLAY*0.3,0.5,-DISPLAY*0.3),
+    }, 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    task.delay(0.2, function()
+        WheelContainer.Visible = false
+        Overlay.Visible = false
+        WheelContainer.Size = UDim2.new(0,DISPLAY,0,DISPLAY)
+        WheelContainer.Position = UDim2.new(0.5,-DISPLAY/2,0.5,-DISPLAY/2)
+    end)
+    TopBtn.Text = "EMOTES  [Q]"
+    Tween(TopBtn, {TextColor3 = Color3.fromRGB(220,220,220)}, 0.18)
+    Tween(TopStroke, {Color = Color3.fromRGB(200,200,200), Transparency = 0.4}, 0.18)
+end
+local SKIP_KEYS = {
+    [Enum.KeyCode.LeftShift] = true,
+    [Enum.KeyCode.RightShift] = true,
+    [Enum.KeyCode.LeftControl] = true,
+    [Enum.KeyCode.RightControl] = true,
+    [Enum.KeyCode.LeftAlt] = true,
+    [Enum.KeyCode.RightAlt] = true,
+    [Enum.KeyCode.LeftMeta] = true,
+    [Enum.KeyCode.RightMeta] = true,
+    [Enum.KeyCode.CapsLock] = true,
+}
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    if input.KeyCode == Enum.KeyCode.Escape then
+        if ListeningEmote then cancelListening() end
+        return
+    end
+    if ListeningEmote then
+        if SKIP_KEYS[input.KeyCode] then return end
+        local emoteName = ListeningEmote
+        local btn = ListeningKeyBtn
+        for name, kc in pairs(KEYBINDS) do
+            if kc == input.KeyCode and name ~= emoteName then
+                KEYBINDS[name] = nil
+                local row = KeybindRows[name]
+                if row and row.KeyBtn then
+                    row.KeyBtn.Text = "none"
+                    row.KeyBtn.TextColor3 = Color3.fromRGB(70,70,70)
+                    Tween(row.KeyBtn, {BackgroundColor3 = Color3.fromRGB(16,16,16)}, 0.12)
+                end
+            end
+        end
+        KEYBINDS[emoteName] = input.KeyCode
+        cancelListening()
+        if btn and btn.Parent then
+            btn.Text = "["..keyCodeName(input.KeyCode).."]"
+            btn.TextColor3 = Color3.fromRGB(220,220,220)
+            Tween(btn, {BackgroundColor3 = Color3.fromRGB(20,20,30)}, 0.12)
+        end
+        return
+    end
+    if gpe then return end
+    if input.KeyCode == OPEN_KEY then
+        if not WheelIsOpen then OpenWheel() end
+        return
+    end
+    if not WheelIsOpen then
+        for emoteName, kc in pairs(KEYBINDS) do
+            if input.KeyCode == kc then
+                for _, emote in ipairs(EMOTES) do
+                    if emote.Name == emoteName then
+                        ExecEmote(emote)
+                        break
+                    end
+                end
+                break
+            end
+        end
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode ~= OPEN_KEY then return end
+    if not WheelIsOpen then return end
+    local idx = HoveredSlice
+    CloseWheel()
+    if idx and SliceData[idx] and (not IsEmoting or IsDirectEmoteActive()) then
+        task.delay(0.05, function()
+            ExecEmote(SliceData[idx].Emote)
+        end)
+    end
+end)
+TopBtn.MouseButton1Click:Connect(function()
+    if WheelIsOpen then CloseWheel() else OpenWheel() end
+end)
+TopHolder.MouseEnter:Connect(function()
+    Tween(TopHolder, {BackgroundColor3 = Color3.fromRGB(25,25,25)}, 0.12)
+end)
+TopHolder.MouseLeave:Connect(function()
+    Tween(TopHolder, {BackgroundColor3 = Color3.fromRGB(10,10,10)}, 0.12)
+end)
+MusicBtn.Activated:Connect(function()
+    NoMusicEnabled = not NoMusicEnabled
+    if NoMusicEnabled then
+        if CurrentSound then CurrentSound:Destroy(); CurrentSound = nil end
+        MusicBtn.Text = "~ OFF"
+        Tween(MusicBtn, {
+            TextColor3 = Color3.fromRGB(220,220,220),
+            BackgroundColor3 = Color3.fromRGB(28,28,28),
+        }, 0.15)
+    else
+        MusicBtn.Text = "~ ON"
+        Tween(MusicBtn, {
+            TextColor3 = Color3.fromRGB(200,200,200),
+            BackgroundColor3 = Color3.fromRGB(18,18,18),
+        }, 0.15)
+    end
+end)
+task.spawn(function()
+    while true do
+        Tween(HubStroke, {Transparency=0.55}, 1.4, Enum.EasingStyle.Sine)
+        task.wait(1.4)
+        Tween(HubStroke, {Transparency=0.1}, 1.4, Enum.EasingStyle.Sine)
+        task.wait(1.4)
+    end
+end)
+local DoEmoteReset
+local MobileStopButton = Instance.new("TextButton")
+MobileStopButton.Name = "MobileStopEmote"
+MobileStopButton.Size = UDim2.new(0,132,0,48)
+MobileStopButton.Position = UDim2.new(1,-150,1,-150)
+MobileStopButton.AnchorPoint = Vector2.new(0,0)
+MobileStopButton.BackgroundColor3 = Color3.fromRGB(18,18,18)
+MobileStopButton.BackgroundTransparency = 0.12
+MobileStopButton.BorderSizePixel = 0
+MobileStopButton.Text = "STOP EMOTE"
+MobileStopButton.Font = Enum.Font.GothamBold
+MobileStopButton.TextSize = 13
+MobileStopButton.TextColor3 = Color3.fromRGB(255,255,255)
+MobileStopButton.AutoButtonColor = false
+MobileStopButton.Active = true
+MobileStopButton.Selectable = false
+MobileStopButton.Visible = UserInputService.TouchEnabled
+MobileStopButton.ZIndex = 100
+MobileStopButton.Parent = ScreenGui
+Instance.new("UICorner", MobileStopButton).CornerRadius = UDim.new(0,14)
+local MobileStopStroke = Instance.new("UIStroke")
+MobileStopStroke.Color = Color3.fromRGB(200,200,200)
+MobileStopStroke.Thickness = 1.5
+MobileStopStroke.Transparency = 0.25
+MobileStopStroke.Parent = MobileStopButton
+MobileStopButton.MouseButton1Down:Connect(function()
+    Tween(MobileStopButton, {BackgroundColor3 = Color3.fromRGB(55,20,20)}, 0.08)
+end)
+MobileStopButton.MouseButton1Up:Connect(function()
+    Tween(MobileStopButton, {BackgroundColor3 = Color3.fromRGB(18,18,18)}, 0.12)
+end)
+MobileStopButton.Activated:Connect(function()
+    if IsEmoting then DoEmoteReset() end
+end)
+local MobileStopLastState = false
+local MobileStopConnection
+MobileStopConnection = RunService.Heartbeat:Connect(function()
+    if not MobileStopButton.Parent then
+        if MobileStopConnection then MobileStopConnection:Disconnect() end
+        return
+    end
+    local shouldShow = UserInputService.TouchEnabled and IsEmoting
+    if shouldShow ~= MobileStopLastState then
+        MobileStopLastState = shouldShow
+        MobileStopButton.Visible = shouldShow
+        if shouldShow then
+            MobileStopButton.Position = UDim2.new(1,-150,1,-150)
+            MobileStopButton.BackgroundTransparency = 1
+            Tween(MobileStopButton, {BackgroundTransparency = 0.12}, 0.16)
+        else
+            MobileStopButton.BackgroundTransparency = 0.12
+        end
+    end
+end)
+DoEmoteReset = function()
+    if not IsEmoting then return end
+    if ActiveToken and ActiveToken.directAnimation then
+        CancelActiveEmote()
+        return
+    end
+    local savedCF = EmoteOrigin
+    CancelActiveEmote()
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.Anchored = false end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = 0 end
+    end
+    local conn
+    conn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        conn:Disconnect()
+        if savedCF then
+            task.delay(0.6, function()
+                local hrp = newChar:WaitForChild("HumanoidRootPart",5)
+                if hrp then hrp.CFrame = savedCF end
+            end)
+        end
+        task.delay(0.8, function()
+            loadPage(CurrentPage, true)
+        end)
+    end)
+end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.Space and IsEmoting then
+        DoEmoteReset()
+    end
+end)
+UserInputService.JumpRequest:Connect(function()
+    if IsEmoting then DoEmoteReset() end
+end)
+local NotifHolder = Instance.new("Frame")
+NotifHolder.Name = "EmoteNotif"
+NotifHolder.Size = UDim2.new(0,200,0,52)
+NotifHolder.Position = UDim2.new(1,10,0,14)
+NotifHolder.BackgroundColor3 = Color3.fromRGB(8,8,8)
+NotifHolder.BackgroundTransparency = 0.15
+NotifHolder.BorderSizePixel = 0
+NotifHolder.ZIndex = 35
+NotifHolder.ClipsDescendants = false
+NotifHolder.Parent = ScreenGui
+local NotifIcon = Instance.new("TextLabel")
+NotifIcon.Size = UDim2.new(0,28,1,0)
+NotifIcon.Position = UDim2.new(0,8,0,0)
+NotifIcon.BackgroundTransparency = 1
+NotifIcon.Font = Enum.Font.GothamBold
+NotifIcon.TextSize = 18
+NotifIcon.TextColor3 = Color3.fromRGB(255,220,80)
+NotifIcon.Text = "▶"
+NotifIcon.TextXAlignment = Enum.TextXAlignment.Center
+NotifIcon.ZIndex = 36
+NotifIcon.Parent = NotifHolder
+local NotifTitle = Instance.new("TextLabel")
+NotifTitle.Size = UDim2.new(1,-46,0,20)
+NotifTitle.Position = UDim2.new(0,38,0,6)
+NotifTitle.BackgroundTransparency = 1
+NotifTitle.Font = Enum.Font.GothamBold
+NotifTitle.TextSize = 11
+NotifTitle.TextColor3 = Color3.fromRGB(255,255,255)
+NotifTitle.Text = "Emote Playing"
+NotifTitle.TextXAlignment = Enum.TextXAlignment.Left
+NotifTitle.TextTruncate = Enum.TextTruncate.AtEnd
+NotifTitle.ZIndex = 36
+NotifTitle.Parent = NotifHolder
+local NotifSub = Instance.new("TextLabel")
+NotifSub.Size = UDim2.new(1,-46,0,16)
+NotifSub.Position = UDim2.new(0,38,0,28)
+NotifSub.BackgroundTransparency = 1
+NotifSub.Font = Enum.Font.Gotham
+NotifSub.TextSize = 9
+NotifSub.TextColor3 = Color3.fromRGB(255,255,255)
+NotifSub.Text = "♪ Music ON"
+NotifSub.TextXAlignment = Enum.TextXAlignment.Left
+NotifSub.ZIndex = 36
+NotifSub.Parent = NotifHolder
+local NotifBar = Instance.new("Frame")
+NotifBar.Size = UDim2.new(1,-16,0,2)
+NotifBar.Position = UDim2.new(0,8,1,-6)
+NotifBar.BackgroundColor3 = Color3.fromRGB(220,220,220)
+NotifBar.BackgroundTransparency = 0.2
+NotifBar.BorderSizePixel = 0
+NotifBar.ZIndex = 37
+NotifBar.Parent = NotifHolder
+Instance.new("UICorner", NotifBar).CornerRadius = UDim.new(1,0)
+local NotifTask = nil
+local NOTIF_SHOW_X = UDim2.new(1,-218,0,14)
+local NOTIF_HIDE_X = UDim2.new(1,10,0,14)
+ShowNotification = function(emoteName, musicOn, customSubText)
+    if not NotificationsOn then return end
+    if NotifTask then
+        task.cancel(NotifTask)
+        NotifTask = nil
+    end
+    NotifTitle.Text = emoteName or "Emote"
+    NotifSub.Text = customSubText or (musicOn and "♪ Music ON" or "♪ Music OFF")
+    NotifIcon.TextColor3 = Color3.fromRGB(220,220,220)
+    NotifHolder.Position = NOTIF_HIDE_X
+    Tween(NotifHolder, {Position = NOTIF_SHOW_X}, 0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    NotifBar.Size = UDim2.new(1,-16,0,2)
+    Tween(NotifBar, {Size = UDim2.new(0,0,0,2)}, 3, Enum.EasingStyle.Linear)
+    NotifTask = task.delay(3, function()
+        Tween(NotifHolder, {Position = NOTIF_HIDE_X}, 0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+        NotifTask = nil
+    end)
+end
+updateArrowVisibility()
+loadPage(1, true)
